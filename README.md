@@ -77,7 +77,7 @@ python -m http.server 8000   # 然後開 http://localhost:8000
 ## 🛠️ 開發小抄
 
 - 網址加 `?debug` 會顯示能量／心情讀數，方便調整搖晃靈敏度。
-- 搖晃參數在 [app.js](app.js) 最上方的 `SHAKE`：`SMILE_ON` / `SMILE_OFF`（笑的門檻）、`CRY_ENTER` / `CRY_LEAVE`（哭的門檻）、`TAU`（衰減快慢）、`MOTION_K`（靈敏度）。
+- 搖晃參數在 [app.js](app.js) 最上方的 `SHAKE`：`NOISE_FLOOR`（調高＝更不敏感、過濾小晃動）、`SMILE_ON`（調高＝要搖更久才笑）、`CRY_ENTER`/`CRY_LEAVE`（哭的門檻）、`TAU`（衰減快慢，越大越慢）、`MOTION_K`（靈敏度）、`DWELL_MIN`/`DWELL_RAND`（每個心情至少停留 2.5–5 秒，含隨機）。
 - 多語字串集中在 [i18n.js](i18n.js) 的 `DICT`。
 - 視覺主題色集中在 [styles.css](styles.css) `:root`（月夜底色 + 金色點綴 + 三種心情色）。
 - 尊重系統「減少動態效果」設定（`prefers-reduced-motion`）。
