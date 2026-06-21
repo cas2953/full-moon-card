@@ -12,6 +12,7 @@
     babySmile: ["assets/images/baby-smile.webp", "assets/images/baby-smile.png"],
     babyCry:   ["assets/images/baby-cry.webp",   "assets/images/baby-cry.png"],
     cardOg:    ["assets/images/card-og.webp",    "assets/images/card-og.png"],
+    cardOgFg:  ["assets/images/card-og-fg.webp", "assets/images/card-og-fg.png"],
     cardZh:    ["assets/images/card-cn.webp",    "assets/images/card-cn.png"],
     cardEn:    ["assets/images/card-en.webp",    "assets/images/card-en.png"],
     cardBack:  ["assets/images/card-back.webp"],
@@ -21,19 +22,22 @@
   const DOWNLOAD_NAME = { cry: "滿月賀卡-寶寶哭臉.png", calm: "滿月賀卡-寶寶熟睡.png", smile: "滿月賀卡-寶寶笑臉.png" };
 
   // Shake engine — energy is a time-decaying "shake budget" mapped to 3 moods.
-  // Tuned for a GENTLE "rocking a baby to sleep" feel: a NOISE_FLOOR ignores
-  // tiny hand jitter, and you need ~1s of sustained rocking to reach a smile.
+  // Calm "rocking a baby to sleep" feel: a high NOISE_FLOOR ignores jitter, slow
+  // decay + a randomized per-stage DWELL keep each mood on screen 2.5–5s so it
+  // never flickers. ── Tune on a real device via ?debug ──
   const SHAKE = {
-    MAX: 130,
-    SMILE_ON: 80,    // calm  → smile
-    SMILE_OFF: 50,   // smile → calm
-    CRY_LEAVE: 30,   // cry   → calm
-    CRY_ENTER: 14,   // calm  → cry
-    TAU: 950,        // ms decay time-constant — slow/calm (frame-rate independent)
-    NOISE_FLOOR: 0.4,// accel delta below this (m/s²) is treated as 0 (ignore jitter)
-    MOTION_K: 8,     // accel delta (above floor) → energy
-    POINTER_K: 0.45, // pointer move (px, above 4px) → energy (desktop fallback)
-    GRACE_MS: 260,   // debounce between mood flips
+    MAX: 160,
+    SMILE_ON: 110,    // calm → smile (high → needs real sustained rocking)
+    SMILE_OFF: 38,    // smile → calm (only after dwell)
+    CRY_LEAVE: 34,    // cry → calm (rocking soothes — no dwell upward)
+    CRY_ENTER: 10,    // calm → cry (only after dwell)
+    TAU: 1500,        // ms decay time-constant — very slow (moods linger)
+    NOISE_FLOOR: 1.2, // accel delta below this (m/s²) → 0 (ignore jitter)
+    MOTION_K: 4,      // accel delta (above floor) → energy
+    POINTER_K: 0.35,  // pointer move (px, above 4px) → energy (desktop fallback)
+    DWELL_MIN: 2500,  // min ms to hold a mood before it may drop
+    DWELL_RAND: 2500, // + up to this much random (organic, non-mechanical)
+    GRACE_MS: 300,
   };
 
   const REDUCE_MOTION = window.matchMedia &&
@@ -105,7 +109,8 @@
   let energy = 0;
   let state = "calm";       // 'cry' | 'calm' | 'smile'
   let hasInteracted = false;
-  let lastFlipTs = 0;       // performance.now() of last mood flip (real-time debounce)
+  let lastFlipTs = 0;       // performance.now() the current mood was entered
+  let dwellMs = 0;          // randomized minimum time to hold the current mood
   let loopRunning = false;
   let cardRaf = 0;
   let manualMood = false;   // a tap pins the mood until the next real shake
@@ -122,6 +127,7 @@
     if (!force && performance.now() - lastFlipTs < SHAKE.GRACE_MS) return;
     state = next;
     lastFlipTs = performance.now();
+    dwellMs = SHAKE.DWELL_MIN + Math.random() * SHAKE.DWELL_RAND; // organic hold time
     document.body.setAttribute("data-mood", next);
     if (next === "smile") document.body.classList.add("dl-on"); // unlock download, then it stays
     updateHint();
@@ -145,15 +151,17 @@
     if (energy < 0.4) energy = 0;
     setFill();
 
-    // 3-band hysteresis: cry ↔ calm ↔ smile (skipped while a tap pins the mood)
+    // 3-band hysteresis with a per-stage dwell: upward (soothing) is responsive,
+    // but a mood must be held for dwellMs before it can drop down (no flicker).
     if (!manualMood) {
+      const dwelt = performance.now() - lastFlipTs >= dwellMs;
       if (state === "smile") {
-        if (energy < SHAKE.SMILE_OFF) setMood("calm");
+        if (dwelt && energy < SHAKE.SMILE_OFF) setMood("calm");
       } else if (state === "calm") {
-        if (energy >= SHAKE.SMILE_ON) setMood("smile");
-        else if (hasInteracted && energy <= SHAKE.CRY_ENTER) setMood("cry");
+        if (energy >= SHAKE.SMILE_ON) setMood("smile");                          // up
+        else if (dwelt && hasInteracted && energy <= SHAKE.CRY_ENTER) setMood("cry");
       } else { /* cry */
-        if (energy >= SHAKE.CRY_LEAVE) setMood("calm");
+        if (energy >= SHAKE.CRY_LEAVE) setMood("calm");                          // up
       }
     }
 
@@ -230,29 +238,30 @@
   }
 
   /* ---- save the smile ---- */
-  let savedTimer = 0;
-  async function downloadCurrent() {
-    const span = downloadBtn.querySelector("span");
-    const src = DOWNLOAD_IMG[state] || DOWNLOAD_IMG.smile;     // whatever stage is showing now
+  async function downloadFile(src, name, span) {
+    const key = span ? span.getAttribute("data-i18n") : null;
     try {
       const res = await fetch(src);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = DOWNLOAD_NAME[state] || DOWNLOAD_NAME.smile;
+      a.href = url; a.download = name;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
-      if (span) {
-        // detach the i18n binding so a language switch can't clobber the confirmation
-        span.removeAttribute("data-i18n");
+      if (span && key) {
+        span.removeAttribute("data-i18n"); // so a language switch can't clobber the "Saved ✓"
         span.textContent = window.I18N.t("card.saved");
-        clearTimeout(savedTimer);
-        savedTimer = window.setTimeout(() => {
-          span.setAttribute("data-i18n", "card.download");
-          span.textContent = window.I18N.t("card.download");
+        window.setTimeout(() => {
+          span.setAttribute("data-i18n", key);
+          span.textContent = window.I18N.t(key);
         }, 1800);
       }
     } catch (e) { window.open(src, "_blank"); }
+  }
+  function downloadCurrent() {
+    downloadFile(DOWNLOAD_IMG[state] || DOWNLOAD_IMG.smile,
+                 DOWNLOAD_NAME[state] || DOWNLOAD_NAME.smile,
+                 downloadBtn.querySelector("span"));   // photo of whatever stage is showing
   }
   if (downloadBtn) downloadBtn.addEventListener("click", downloadCurrent);
 
@@ -276,6 +285,7 @@
   const drawn = $("#drawn");
   const drawCardImg = $("#draw-card-img");
   const drawAgain = $("#draw-again");
+  const drawArea = $("#draw-area");
   setImg(cardBackImg, IMAGES.cardBack);
   const cardCandidates = () => (window.I18N.lang === "en" ? IMAGES.cardEn : IMAGES.cardZh);
   let isDrawing = false;
@@ -283,6 +293,12 @@
   function doDraw() {
     if (isDrawing) return;
     isDrawing = true;
+    if (drawArea && !REDUCE_MOTION) {              // legendary golden burst
+      drawArea.classList.remove("is-bursting");
+      void drawArea.offsetWidth;
+      drawArea.classList.add("is-bursting");
+      window.setTimeout(() => drawArea.classList.remove("is-bursting"), 1300);
+    }
     cardBack.classList.add("is-drawing");
     deck.classList.add("is-drawing");
     const ms = REDUCE_MOTION ? 60 : 820;
@@ -306,6 +322,14 @@
   if (cardBack) cardBack.addEventListener("click", doDraw);
   if (drawAgain) drawAgain.addEventListener("click", resetDraw);
 
+  const downloadCardBtn = $("#download-card");
+  if (downloadCardBtn) downloadCardBtn.addEventListener("click", () => {
+    const en = window.I18N.lang === "en";
+    downloadFile(en ? "assets/images/card-en.png" : "assets/images/card-cn.png",
+                 en ? "Bobo-keepsake-card.png" : "波波紀念卡.png",
+                 downloadCardBtn.querySelector("span"));
+  });
+
   /* ============================================================
      6. LIGHTBOX — close-up with looping FX
      ============================================================ */
@@ -314,9 +338,12 @@
   const lbScene = $("#lightbox-scene");
   const lbClose = $("#lightbox-close");
   const lbCanvas = $("#lightbox-fx");
+  const lbBg = $("#lb-bg");
+  const lbFg = $("#lightbox-fg");
   const drawnCardBtn = $("#drawn-card");
   const appEl = $("#app");
   setImg(lbImg, IMAGES.cardOg);
+  setImg(lbFg, IMAGES.cardOgFg);
 
   let lbOpen = false, lbRaf = 0, lbReturnFocus = null;
   const ctx = lbCanvas ? lbCanvas.getContext("2d") : null;
@@ -352,8 +379,10 @@
     const autoX = Math.sin(f * .012) * .25, autoY = Math.cos(f * .009) * .2;
     par.cx += (par.tx + autoX - par.cx) * .06;
     par.cy += (par.ty + autoY - par.cy) * .06;
-    if (lbScene) lbScene.style.transform = "translate3d(" + (par.cx * 14).toFixed(2) + "px," + (par.cy * 14).toFixed(2) + "px,0)";
-    lbCanvas.style.transform = "translate3d(" + (par.cx * 26).toFixed(2) + "px," + (par.cy * 26).toFixed(2) + "px,0)";
+    if (lbScene) lbScene.style.transform = "translate3d(" + (par.cx * 8).toFixed(2) + "px," + (par.cy * 8).toFixed(2) + "px,0)";
+    if (lbBg) lbBg.style.transform = "translate3d(" + (par.cx * 4).toFixed(2) + "px," + (par.cy * 4).toFixed(2) + "px,0)";
+    if (lbFg) lbFg.style.transform = "translate3d(" + (par.cx * 17).toFixed(2) + "px," + (par.cy * 17).toFixed(2) + "px,0)"; // foreground pops (2.5D)
+    lbCanvas.style.transform = "translate3d(" + (par.cx * 24).toFixed(2) + "px," + (par.cy * 24).toFixed(2) + "px,0)";
     if (ctx) {
       ctx.clearRect(0, 0, cw, ch);
       ctx.globalCompositeOperation = "lighter";

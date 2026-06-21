@@ -118,7 +118,13 @@
 
       <!-- ---------- Screen 2 : 紀念小卡 ---------- -->
       <section id="screen-draw" class="screen screen--draw" aria-label="紀念小卡">
+        <div class="draw-aura" aria-hidden="true"></div>
         <div class="draw-area" id="draw-area">
+          <div class="draw-burst" aria-hidden="true">
+            <span class="draw-burst__rays"></span>
+            <span class="draw-burst__flash"></span>
+            <span class="draw-burst__ring"></span>
+          </div>
           <!-- closed keepsake (pre-open) -->
           <div class="deck" id="deck">
             <button class="card-back" id="card-back" type="button" aria-label="翻開紀念小卡 / Open keepsake card">
@@ -140,7 +146,15 @@
               </svg>
               <span data-i18n="draw.tapToZoom">輕觸看特寫</span>
             </span>
-            <button class="btn-ghost" id="draw-again" type="button" data-i18n="draw.again">再翻一次</button>
+            <div class="drawn__actions">
+              <button class="btn-ghost" id="draw-again" type="button" data-i18n="draw.again">再翻一次</button>
+              <button class="btn-save" id="download-card" type="button">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/>
+                </svg>
+                <span data-i18n="draw.download">儲存紀念卡</span>
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -186,7 +200,10 @@
     <canvas class="lightbox__fx" id="lightbox-fx" aria-hidden="true"></canvas>
     <div class="lightbox__scene" id="lightbox-scene">
       <div class="lightbox__frame" id="lightbox-frame">
-        <img id="lightbox-img" alt="卡片特寫 / Card close-up" decoding="async" />
+        <div class="lb-bg" id="lb-bg"><img id="lightbox-img" alt="卡片特寫 / Card close-up" decoding="async" /></div>
+        <img id="lightbox-fg" class="lb-fg" alt="" aria-hidden="true" decoding="async" />
+        <div class="lightbox__rays" aria-hidden="true"></div>
+        <div class="lightbox__holo" aria-hidden="true"></div>
         <div class="lightbox__lumin" aria-hidden="true"></div>
         <div class="glow glow--candle" aria-hidden="true"></div>
         <div class="glow glow--book" aria-hidden="true"></div>

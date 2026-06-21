@@ -63,10 +63,10 @@ img { display: block; max-width: 100%; }
 button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; padding: 0; }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 8px; }
 
-/* smooth language switch: translated text crossfades, the keepsake image fades */
-[data-i18n] { transition: opacity .22s ease; }
+/* smooth language switch: translated text crossfades slowly, keepsake image fades */
+[data-i18n] { transition: opacity .45s ease; }
 body.lang-switching [data-i18n] { opacity: 0; }
-#draw-card-img { transition: opacity .28s ease; }
+#draw-card-img { transition: opacity .5s ease; }
 
 /* ---------- app shell ---------- */
 .app {
@@ -354,6 +354,40 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
 .draw-area { position: relative; width: 100%; display: flex; justify-content: center; }
 .deck[hidden], .drawn[hidden] { display: none; }
 
+/* slow dynamic light flow behind the keepsake */
+.draw-aura {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+  background: radial-gradient(46% 38% at 50% 44%, rgba(138,79,208,.22), transparent 70%);
+}
+.draw-aura::before, .draw-aura::after {
+  content: ""; position: absolute; left: 50%; top: 44%; width: 150%; aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, rgba(241,207,134,.07) 0deg 3deg, transparent 3deg 13deg);
+  -webkit-mask: radial-gradient(circle, #000 5%, transparent 62%);
+  mask: radial-gradient(circle, #000 5%, transparent 62%);
+  animation: auraSpin 50s linear infinite;
+}
+.draw-aura::after { animation-duration: 78s; animation-direction: reverse; opacity: .6; }
+@keyframes auraSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* legendary golden burst on reveal */
+.draw-burst { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 5; opacity: 0; }
+.draw-area.is-bursting .draw-burst { opacity: 1; }
+.draw-burst > span { position: absolute; }
+.draw-burst__flash { width: 55%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,248,225,.95) 0%, rgba(255,214,130,.6) 28%, rgba(255,190,80,0) 68%); }
+.draw-burst__rays { width: 150%; aspect-ratio: 1;
+  background: repeating-conic-gradient(from 0deg, rgba(255,230,150,.6) 0deg 1.4deg, transparent 1.4deg 9deg);
+  -webkit-mask: radial-gradient(circle, transparent 16%, #000 30%, #000 48%, transparent 70%);
+  mask: radial-gradient(circle, transparent 16%, #000 30%, #000 48%, transparent 70%); }
+.draw-burst__ring { width: 34%; aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(255,232,160,.85); }
+.draw-area.is-bursting .draw-burst__flash { animation: bFlash 1s ease-out forwards; }
+.draw-area.is-bursting .draw-burst__rays { animation: bRays 1.1s cubic-bezier(.2,.7,.2,1) forwards; }
+.draw-area.is-bursting .draw-burst__ring { animation: bRing .9s ease-out forwards; }
+@keyframes bFlash { 0% { transform: scale(.2); opacity: 0; } 18% { opacity: 1; } 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes bRays { 0% { transform: rotate(-25deg) scale(.3); opacity: 0; } 22% { opacity: .95; } 100% { transform: rotate(28deg) scale(1.6); opacity: 0; } }
+@keyframes bRing { 0% { transform: scale(.3); opacity: 0; } 22% { opacity: 1; } 100% { transform: scale(2.6); opacity: 0; } }
+
 /* closed keepsake */
 .deck { display: flex; flex-direction: column; align-items: center; gap: 24px; }
 .card-back {
@@ -403,6 +437,16 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
   background: rgba(240,210,138,.92); box-shadow: 0 6px 16px rgba(0,0,0,.4);
   animation: bob 2.4s ease-in-out infinite;
 }
+.drawn__actions { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.btn-save {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 22px; border-radius: 999px; font-weight: 700; font-size: 14.5px;
+  color: #3a2a08; background: linear-gradient(135deg, #ffe6a3, var(--gold-2));
+  box-shadow: 0 10px 26px rgba(231,189,98,.45), inset 0 1px 0 rgba(255,255,255,.6);
+  transition: transform .15s ease;
+}
+.btn-save svg { stroke: #3a2a08; }
+.btn-save:active { transform: translateY(2px) scale(.97); }
 .drawn.is-revealed { animation: revealCard .65s cubic-bezier(.2,.8,.2,1.1) both; }
 @keyframes revealCard {
   0% { opacity: 0; transform: scale(.42) rotate(-8deg); filter: blur(6px); }
@@ -455,12 +499,38 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
 }
 .lightbox__frame {
   position: relative; max-width: min(94vw, 720px); max-height: 82vh; border-radius: 16px; overflow: hidden;
-  box-shadow: 0 30px 80px rgba(0,0,0,.7), inset 0 0 0 1px rgba(240,210,138,.25), 0 0 60px rgba(138,79,208,.45);
-  animation: lbIn .5s cubic-bezier(.2,.8,.2,1.05) both;
+  box-shadow: 0 30px 80px rgba(0,0,0,.7), inset 0 0 0 1px rgba(240,210,138,.3), 0 0 70px rgba(138,79,208,.5);
+  animation: lbIn .5s cubic-bezier(.2,.8,.2,1.05) both, breathe 8s ease-in-out .6s infinite;
 }
 @keyframes lbIn { 0% { opacity: 0; transform: scale(.86); } 100% { opacity: 1; transform: scale(1); } }
-.lightbox__frame img { display: block; max-width: 100%; max-height: 82vh; width: auto; height: auto; animation: breathe 7s ease-in-out infinite; will-change: transform; }
-@keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+@keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.022); } }
+
+/* 2.5D depth: blurred/darkened background + sharp foreground baby */
+.lb-bg { position: relative; display: block; will-change: transform; }
+.lb-bg img { display: block; max-width: 100%; max-height: 82vh; width: auto; height: auto;
+  transform: scale(1.08); filter: blur(2.4px) brightness(.82) saturate(1.08); }
+.lb-fg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; will-change: transform; }
+
+/* volumetric god rays */
+.lightbox__rays {
+  position: absolute; inset: -30%; pointer-events: none; mix-blend-mode: screen; opacity: .5;
+  background: repeating-conic-gradient(from 0deg at 50% 34%, rgba(255,236,175,.16) 0deg 2deg, transparent 2deg 11deg);
+  -webkit-mask: radial-gradient(circle at 50% 34%, #000 0%, rgba(0,0,0,.5) 32%, transparent 68%);
+  mask: radial-gradient(circle at 50% 34%, #000 0%, rgba(0,0,0,.5) 32%, transparent 68%);
+  animation: raysSpin 26s linear infinite;
+}
+@keyframes raysSpin { to { transform: rotate(360deg); } }
+
+/* holographic gold/spectral foil (legendary shimmer) */
+.lightbox__holo {
+  position: absolute; inset: 0; pointer-events: none; mix-blend-mode: color-dodge; opacity: .45;
+  background:
+    repeating-linear-gradient(115deg, rgba(255,255,255,0) 0 6%, rgba(255,240,200,.10) 8%, rgba(170,255,225,.09) 11%, rgba(200,200,255,.10) 14%, rgba(255,255,255,0) 20%),
+    linear-gradient(115deg, transparent 38%, rgba(255,235,170,.45) 50%, transparent 62%);
+  background-size: 200% 200%, 260% 260%;
+  animation: holoDrift 7s ease-in-out infinite alternate;
+}
+@keyframes holoDrift { 0% { background-position: 0% 0%, 0% 50%; } 100% { background-position: 100% 100%, 100% 50%; } }
 
 .glow { position: absolute; pointer-events: none; border-radius: 50%; mix-blend-mode: screen; }
 .glow--candle { left: 6%; top: 78%; width: 24%; height: 24%; background: radial-gradient(circle, rgba(255,180,70,.85), rgba(255,120,30,0) 65%); animation: flame .28s ease-in-out infinite alternate; }
@@ -522,9 +592,12 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
   .sky__stars, .stage-sheen, .shake-hint, .shake-hint__icon, .photo-halo,
   .btn-download, .motion-gate__moon, .btn-primary::after, .card-back, .card-back__crest,
   .card-back__rune, .card-back__shine, .drawn, .drawn.is-revealed, .drawn__zoom,
-  .lightbox__frame, .lightbox__frame img, .glow, .lightbox__breath, .lightbox__lumin {
+  .lightbox__frame, .glow, .lightbox__breath, .lightbox__lumin,
+  .lightbox__rays, .lightbox__holo, .draw-aura,
+  .draw-burst__flash, .draw-burst__rays, .draw-burst__ring {
     animation: none !important;
   }
+  .draw-aura::before, .draw-aura::after { animation: none !important; }
   .photo-layer { transition: opacity .3s ease; }
   .btn-download { transform: none !important; }
   .lang-toggle__thumb, .tab__pill { transition: transform .15s ease; }

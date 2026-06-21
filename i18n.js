@@ -9,8 +9,8 @@
   const DICT = {
     zh: {
       "app.title": "滿月賀卡",
-      "nav.card": "賀卡",
-      "nav.draw": "紀念小卡",
+      "nav.card": "抱睡波波",
+      "nav.draw": "波波紀念卡",
 
       "motion.gateTitle": "滿月誌喜",
       "motion.gateDesc": "輕觸開始，緩緩搖晃手機，喚醒沉睡的寶寶",
@@ -28,17 +28,18 @@
       "mood.calm": "不哭",
       "mood.smile": "笑",
 
-      "draw.deckLabel": "輕觸翻開你的紀念小卡",
+      "draw.deckLabel": "輕觸翻開你的波波紀念卡",
       "draw.opening": "翻開中…",
       "draw.tapToZoom": "輕觸看特寫",
       "draw.again": "再翻一次",
+      "draw.download": "儲存紀念卡",
 
       "lightbox.caption": "輕觸並傾斜畫面，感受魔法",
     },
     en: {
       "app.title": "Full-Moon Card",
-      "nav.card": "Card",
-      "nav.draw": "Keepsake",
+      "nav.card": "Bobo Asleep",
+      "nav.draw": "Bobo's Card",
 
       "motion.gateTitle": "A Full Moon to Celebrate",
       "motion.gateDesc": "Tap to begin, then slowly shake your phone to wake the sleeping baby",
@@ -56,10 +57,11 @@
       "mood.calm": "Calm",
       "mood.smile": "Smiling",
 
-      "draw.deckLabel": "Tap to open your keepsake card",
+      "draw.deckLabel": "Tap to open Bobo's keepsake card",
       "draw.opening": "Opening…",
       "draw.tapToZoom": "Tap for close-up",
       "draw.again": "Flip again",
+      "draw.download": "Save keepsake",
 
       "lightbox.caption": "Touch and tilt the scene to feel the magic",
     },
@@ -102,8 +104,8 @@
     const commit = () => { apply(); subscribers.forEach((fn) => { try { fn(current); } catch (e) {} }); };
     if (reduce) { commit(); return; }
     document.body.classList.add("lang-switching");
-    window.setTimeout(commit, 200);
-    window.setTimeout(() => document.body.classList.remove("lang-switching"), 420);
+    window.setTimeout(commit, 460);
+    window.setTimeout(() => document.body.classList.remove("lang-switching"), 1000);
   }
 
   function toggle() { set(current === "zh" ? "en" : "zh"); }
