@@ -1,99 +1,101 @@
 # 滿月賀卡 · Baby Full-Month Interactive Card
 
-一個純前端（HTML / CSS / JS，零相依套件、免建置）的互動式嬰兒滿月賀卡網頁 App，
+純前端（HTML / CSS / JS，零相依套件、免建置）的互動式嬰兒滿月賀卡，採統一的 **「月夜 Moonlit」** 視覺主題，
 針對 **iPhone 17 Pro**（402×874pt、DPR 3、安全區）做 RWD 最佳化，支援 **中／英** 切換。
 
-A dependency-free, no-build static web app — an interactive baby full-month greeting card,
-RWD-tuned for **iPhone 17 Pro**, with **Chinese / English** switching.
+🌙 **線上版本**：<https://cas2953.github.io/full-moon-card/>
+📱 **QR Code**：[qr-code.png](qr-code.png) ／ [qr-code.svg](qr-code.svg)（掃描即開啟線上版本）
 
 ---
 
 ## ✨ 功能 Features
 
-### 1. 滿月賀卡（搖一搖）
-- 進入後顯示「開始」授權卡片（iOS 需要使用者手勢才能取得陀螺儀權限）。
-- 點「開始」→ 顯示熟睡的寶寶（`baby-card`）與提示「緩慢地搖晃你的手機」。
-- **搖晃手機** → 以 fade-in 淡入 **微笑** 的寶寶（`baby-smile`）。
-- 搖晃**頻率降低或停止** → 淡入 **哭臉**（`baby-cry`）；**繼續搖** → 回到笑臉。
-- 底部有「搖晃力度」能量條即時回饋。
-- 桌機 / 無陀螺儀 / 拒絕授權時：可用滑鼠快速移動或**直接點照片**切換表情（無障礙備援）。
+### 1. 滿月賀卡（搖一搖 → 三種心情）
+進入後點「開始」授權陀螺儀（iOS 需使用者手勢）。搖晃強度對應寶寶的三種心情，三個階段都會在過程中出現：
 
-### 2. 抽卡
-- 底部選單「抽卡」→ 進入魔法風格頁面。
-- 點卡背 → 播放抽卡 / 翻牌動畫 → 翻出你的卡片（`card`，會依語言顯示中／英版本）。
-- **點卡片圖片** → 全螢幕特寫（`card-og`），疊加循環動畫：飄升餘燼、魔法光點、閃爍星火、
-  燭火閃動、法陣與花朵光暈，並支援**手指/滑鼠傾斜的視差**與整圖呼吸光暈。
+| 心情 | 觸發 | 圖片 |
+|---|---|---|
+| 😣 **哭** | 不搖 / 停止後能量降到最低 | `baby-cry` |
+| 😴 **不哭** | 輕搖、或停止後的中段 | `baby-card`（熟睡） |
+| 😊 **笑** | 持續搖晃、能量最高 | `baby-smile` |
+
+- 能量採**時間基準衰減**：搖一搖 → 哭→不哭→笑；停下來 → 笑→不哭→哭，三段都看得到。
+- 底部「哭 · 不哭 · 笑」心情軌會即時亮起對應階段，畫面光暈也會隨心情由暖金 ↔ 冷藍變化。
+- **搖出笑臉時，會跳出「儲存這張笑臉」下載按鈕**，可把寶寶笑臉存到手機。
+- 無陀螺儀 / 拒絕授權 / 桌機：可**輕觸照片**循環切換三種心情（無障礙備援）。
+
+### 2. 紀念小卡（原「抽卡」）
+- 底部選單「紀念小卡」→ 點卡背播放翻牌動畫 → 翻出你的紀念小卡（**已去背、漂浮在夜空背景上**，中／英版隨語言切換）。
+- **點卡片圖片** → 全螢幕特寫（`card-og`），疊加循環特效：飄升餘燼、魔法光點、星火、燭火／法陣／花朵光暈，並支援手指傾斜視差與整圖呼吸光暈。
 
 ### 3. 中英語系切換
-- 右上角 中 / EN 滑動開關，全站 UI 即時切換並記憶選擇（`localStorage`）。
-- 抽卡的卡片圖會跟著語言切換（`card-cn` ↔ `card-en`）。
+右上滑動開關，全站 UI 即時切換並記憶（`localStorage`）；紀念小卡圖也跟著語言換版。
 
 ---
 
-## 📁 圖片 Assets
+## 📁 圖片 Assets（`assets/images/`）
 
-App 實際載入 `assets/images/` 內的檔案。已用 ffmpeg 產生最佳化 WebP（約 115–166 KB／張，
-原始 PNG 約 2 MB），並保留原圖作為備援（找不到 `.webp` 會自動退回 `.png`/`.jpg`，
-再退回內建佔位圖）。
+已用 ffmpeg 轉成最佳化 WebP（原 PNG 約 2 MB → 約 115–175 KB），並保留 PNG 備援（找不到 `.webp` 會自動退回 `.png`，再退回佔位圖）。紀念小卡已用 **rembg**（isnet-general-use）去背成透明 PNG/WebP。
 
 | 用途 | 檔名（基底） | 來源原圖 |
 |---|---|---|
-| 賀卡・熟睡（初始） | `baby-card` | `baby card.png` |
-| 賀卡・微笑 | `baby-smile` | `baby card smile.png` |
-| 賀卡・哭臉 | `baby-cry` | `baby card cry.png` |
-| 抽卡・卡片（中文） | `card-cn` | `card cn.jpg` |
-| 抽卡・卡片（英文） | `card-en` | `card en.jpg` |
+| 賀卡・不哭（熟睡，初始） | `baby-card` | `baby card.png` |
+| 賀卡・笑 | `baby-smile` | `baby card smile.png` |
+| 賀卡・哭 | `baby-cry` | `baby card cry.png` |
+| 紀念小卡（中／去背） | `card-cn` | `card cn.jpg` |
+| 紀念小卡（英／去背） | `card-en` | `card en.jpg` |
 | 特寫動畫 | `card-og` | `card og.png` |
 
-**要換圖時**：把新圖放進 `assets/images/`，沿用相同基底檔名即可（`.webp` / `.png` / `.jpg` 皆可）。
-若想重新最佳化：
-
-```bash
-ffmpeg -y -i 你的圖.png -vf "scale='min(1206,iw)':-2:flags=lanczos" -c:v libwebp -quality 84 assets/images/baby-card.webp
-```
+換圖：把新圖放進 `assets/images/` 沿用相同基底檔名即可。重新最佳化／去背的指令見下方「開發小抄」。
 
 ---
 
-## 🚀 在 iPhone 上測試 / 部署
+## 🚀 部署 / 更新
 
-> ⚠️ 陀螺儀（DeviceMotion）**只有在 HTTPS（或 localhost）才能運作**，所以請用下列方式之一。
+本專案已上線於 **GitHub Pages（branch `main` / root，免費 HTTPS）**：<https://cas2953.github.io/full-moon-card/>
 
-### 方式 A：GitHub Pages（推薦，免費 HTTPS）
-1. 建立 GitHub repo 並把整個資料夾推上去（預設分支 `main`）。
-2. Repo → **Settings → Pages → Build and deployment → Source 選「GitHub Actions」**。
-3. 本專案已附 `.github/workflows/deploy.yml`，推上去即自動部署。
-4. 用 iPhone 開啟 `https://<帳號>.github.io/<repo>/`，點「開始」並允許動作權限。
-
-### 方式 B：Netlify
-- 直接把資料夾拖到 https://app.netlify.com/drop（已附 `netlify.toml`），取得 HTTPS 網址。
-
-### 本機預覽（桌機，無陀螺儀也能測流程）
+要更新內容，只要 push 到 `main`，Pages 會自動重新發佈：
 ```bash
-# 任選一種靜態伺服器
-python -m http.server 8000
-# 或
-npx serve .
+git add -A && git commit -m "update" && git push
 ```
-開 `http://localhost:8000`。桌機沒有陀螺儀，可用滑鼠快速晃動照片區或直接點照片切換表情。
+
+> ⚠️ 陀螺儀（DeviceMotion）只有在 **HTTPS（或 localhost）** 才能運作，所以請用線上版（或下方本機 HTTPS）測試搖晃功能。
+
+### 重新產生 QR Code（若日後換網址）
+```bash
+python -c "import segno; segno.make('你的網址', error='h').save('qr-code.png', scale=12, border=4, dark='#171231')"
+```
+
+### 本機預覽
+```bash
+python -m http.server 8000   # 然後開 http://localhost:8000
+```
+桌機沒有陀螺儀，可用滑鼠快速晃動照片區，或直接輕觸照片循環切換三種心情。
 
 ---
 
 ## 🛠️ 開發小抄
 
-- 加 `?debug` 於網址（例：`localhost:8000/?debug`）會顯示能量/狀態讀數，方便調整搖晃靈敏度。
-- 搖晃靈敏度參數在 [app.js](app.js) 最上方的 `SHAKE` 物件（`ON` / `OFF` / `DECAY` / `MOTION_K`）。
+- 網址加 `?debug` 會顯示能量／心情讀數，方便調整搖晃靈敏度。
+- 搖晃參數在 [app.js](app.js) 最上方的 `SHAKE`：`SMILE_ON` / `SMILE_OFF`（笑的門檻）、`CRY_ENTER` / `CRY_LEAVE`（哭的門檻）、`TAU`（衰減快慢）、`MOTION_K`（靈敏度）。
 - 多語字串集中在 [i18n.js](i18n.js) 的 `DICT`。
-- 視覺主題色集中在 [styles.css](styles.css) `:root` 變數（暖色賀卡世界 + 紫金魔法世界）。
+- 視覺主題色集中在 [styles.css](styles.css) `:root`（月夜底色 + 金色點綴 + 三種心情色）。
 - 尊重系統「減少動態效果」設定（`prefers-reduced-motion`）。
+
+重新最佳化圖片：
+```bash
+ffmpeg -y -i in.png -vf "scale='min(1206,iw)':-2:flags=lanczos" -c:v libwebp -quality 84 assets/images/baby-card.webp
+```
+去背（需 `pip install rembg onnxruntime pillow`）：
+```bash
+python -c "from rembg import remove,new_session; from PIL import Image; s=new_session('isnet-general-use'); Image.open('in.jpg').convert('RGBA').save('out.png') if False else remove(Image.open('in.jpg').convert('RGBA'),session=s,alpha_matting=True).save('assets/images/card-cn.png')"
+```
 
 ## 結構
 ```
 .
-├─ index.html
-├─ styles.css
-├─ app.js
-├─ i18n.js
-├─ assets/images/        # app 載入的最佳化圖（webp + 原圖備援）
-├─ netlify.toml
-└─ .github/workflows/deploy.yml
+├─ index.html · styles.css · app.js · i18n.js
+├─ assets/images/        # 最佳化 webp + png 備援（含去背紀念小卡）
+├─ qr-code.png / .svg    # 指向線上版的 QR Code
+└─ netlify.toml          # （備用）Netlify 靜態部署設定
 ```

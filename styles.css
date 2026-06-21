@@ -298,7 +298,7 @@ body[data-mood="smile"] .btn-download { display: inline-flex; animation: popUp .
 
 /* motion gate */
 .motion-gate {
-  position: absolute; inset: 0; z-index: 5;
+  position: absolute; inset: 0; z-index: 30;
   display: flex; align-items: center; justify-content: center; padding: 26px;
   background: rgba(12,10,28,.55); backdrop-filter: blur(12px);
   transition: opacity .55s ease, visibility .55s;
@@ -505,7 +505,7 @@ body[data-mood="smile"] .btn-download { display: inline-flex; animation: popUp .
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
   .sky__stars, .stage-sheen, .shake-hint, .shake-hint__icon, .photo-halo,
-  .motion-gate__moon, .btn-primary::after, .card-back, .card-back__crest,
+  .btn-download, .motion-gate__moon, .btn-primary::after, .card-back, .card-back__crest,
   .card-back__rune, .card-back__shine, .drawn, .drawn.is-revealed, .drawn__zoom,
   .lightbox__frame, .lightbox__frame img, .glow, .lightbox__breath, .lightbox__caption {
     animation: none !important;

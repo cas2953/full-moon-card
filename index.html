@@ -23,6 +23,15 @@
 </head>
 
 <body data-lang="zh" data-screen="card" data-mood="calm">
+  <script>
+    // set language before first paint to avoid a flash of the wrong toggle/text
+    (function () {
+      var l = localStorage.getItem("babycard.lang");
+      if (l !== "zh" && l !== "en") l = (navigator.language || "").toLowerCase().indexOf("zh") === 0 ? "zh" : "en";
+      document.body.setAttribute("data-lang", l);
+      document.documentElement.lang = l === "zh" ? "zh-Hant" : "en";
+    })();
+  </script>
   <div id="app" class="app">
     <!-- ============ AMBIENT NIGHT SKY (shared background) ============ -->
     <div class="sky" aria-hidden="true">
@@ -105,20 +114,6 @@
           </button>
         </div>
 
-        <!-- Motion permission gate -->
-        <div class="motion-gate" id="motion-gate">
-          <div class="motion-gate__box">
-            <div class="motion-gate__moon" aria-hidden="true">
-              <svg viewBox="0 0 64 64" width="62" height="62"><path d="M54 35a22 22 0 1 1-25-25 17 17 0 0 0 25 25z" fill="currentColor"/></svg>
-            </div>
-            <h2 class="motion-gate__title" data-i18n="motion.gateTitle">滿月誌喜</h2>
-            <p class="motion-gate__desc" data-i18n="motion.gateDesc">輕觸開始，緩緩搖晃手機，喚醒沉睡的寶寶</p>
-            <button id="motion-start" class="btn-primary" type="button">
-              <span data-i18n="motion.start">開始</span>
-            </button>
-            <p class="motion-gate__note" id="motion-note" hidden></p>
-          </div>
-        </div>
       </section>
 
       <!-- ---------- Screen 2 : 紀念小卡 ---------- -->
@@ -187,6 +182,21 @@
       </button>
       <span class="tab__pill" aria-hidden="true"></span>
     </nav>
+
+    <!-- Motion permission / welcome gate (covers the whole app until dismissed) -->
+    <div class="motion-gate" id="motion-gate">
+      <div class="motion-gate__box">
+        <div class="motion-gate__moon" aria-hidden="true">
+          <svg viewBox="0 0 64 64" width="62" height="62"><path d="M54 35a22 22 0 1 1-25-25 17 17 0 0 0 25 25z" fill="currentColor"/></svg>
+        </div>
+        <h2 class="motion-gate__title" data-i18n="motion.gateTitle">滿月誌喜</h2>
+        <p class="motion-gate__desc" data-i18n="motion.gateDesc">輕觸開始，緩緩搖晃手機，喚醒沉睡的寶寶</p>
+        <button id="motion-start" class="btn-primary" type="button">
+          <span data-i18n="motion.start">開始</span>
+        </button>
+        <p class="motion-gate__note" id="motion-note" hidden></p>
+      </div>
+    </div>
   </div>
 
   <!-- ============ LIGHTBOX (full-screen close-up) ============ -->

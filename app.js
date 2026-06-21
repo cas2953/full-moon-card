@@ -99,9 +99,10 @@
   let energy = 0;
   let state = "calm";       // 'cry' | 'calm' | 'smile'
   let hasInteracted = false;
-  let lastFlip = 0;
-  let frame = 0;
+  let lastFlipTs = 0;       // performance.now() of last mood flip (real-time debounce)
   let loopRunning = false;
+  let cardRaf = 0;
+  let manualMood = false;   // a tap pins the mood until the next real shake
   let motionActive = false;
   let lastAcc = null;
   let lastTs = 0;
@@ -112,9 +113,9 @@
   }
   function setMood(next, force) {
     if (next === state) return;
-    if (!force && (frame - lastFlip) < SHAKE.GRACE_MS / 16) return;
+    if (!force && performance.now() - lastFlipTs < SHAKE.GRACE_MS) return;
     state = next;
-    lastFlip = frame;
+    lastFlipTs = performance.now();
     document.body.setAttribute("data-mood", next);
     updateHint();
   }
@@ -123,13 +124,13 @@
       "scaleX(" + Math.max(0, Math.min(1, energy / SHAKE.MAX)).toFixed(3) + ")";
   }
   function addEnergy(a) {
+    manualMood = false; // real motion resumes dynamic mood evaluation
     energy = Math.min(SHAKE.MAX, energy + a);
     if (energy > SHAKE.CRY_LEAVE) hasInteracted = true;
     ensureLoop();
   }
 
   function tick(ts) {
-    frame++;
     const t = typeof ts === "number" ? ts : lastTs;
     const dt = lastTs ? Math.min(80, t - lastTs) : 16;
     lastTs = t;
@@ -137,22 +138,24 @@
     if (energy < 0.4) energy = 0;
     setFill();
 
-    // 3-band hysteresis: cry ↔ calm ↔ smile
-    if (state === "smile") {
-      if (energy < SHAKE.SMILE_OFF) setMood("calm");
-    } else if (state === "calm") {
-      if (energy >= SHAKE.SMILE_ON) setMood("smile");
-      else if (hasInteracted && energy <= SHAKE.CRY_ENTER) setMood("cry");
-    } else { /* cry */
-      if (energy >= SHAKE.CRY_LEAVE) setMood("calm");
+    // 3-band hysteresis: cry ↔ calm ↔ smile (skipped while a tap pins the mood)
+    if (!manualMood) {
+      if (state === "smile") {
+        if (energy < SHAKE.SMILE_OFF) setMood("calm");
+      } else if (state === "calm") {
+        if (energy >= SHAKE.SMILE_ON) setMood("smile");
+        else if (hasInteracted && energy <= SHAKE.CRY_ENTER) setMood("cry");
+      } else { /* cry */
+        if (energy >= SHAKE.CRY_LEAVE) setMood("calm");
+      }
     }
 
     if (DEBUG) debugReadout();
-    if (energy > 0) { requestAnimationFrame(tick); }
+    if (energy > 0) { cardRaf = requestAnimationFrame(tick); }
     else { loopRunning = false; lastTs = 0; }
   }
   function ensureLoop() {
-    if (!loopRunning) { loopRunning = true; lastTs = 0; requestAnimationFrame(tick); }
+    if (!loopRunning) { loopRunning = true; lastTs = 0; cardRaf = requestAnimationFrame(tick); }
   }
 
   /* ---- accelerometer ---- */
@@ -188,6 +191,9 @@
   const TAP_ENERGY = { smile: SHAKE.MAX, calm: (SHAKE.SMILE_OFF + SHAKE.CRY_LEAVE) / 2, cry: 0 };
   stage.addEventListener("click", () => {
     hasInteracted = true;
+    manualMood = true;                 // pin until next real shake
+    if (cardRaf) cancelAnimationFrame(cardRaf);
+    loopRunning = false; lastTs = 0;   // freeze the decay loop so the tap sticks
     const next = TAP_NEXT[state] || "smile";
     energy = TAP_ENERGY[next];
     setMood(next, true);
@@ -216,6 +222,7 @@
   }
 
   /* ---- save the smile ---- */
+  let savedTimer = 0;
   async function downloadSmile() {
     const span = downloadBtn.querySelector("span");
     try {
@@ -227,8 +234,14 @@
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       if (span) {
+        // detach the i18n binding so a language switch can't clobber the confirmation
+        span.removeAttribute("data-i18n");
         span.textContent = window.I18N.t("card.saved");
-        setTimeout(() => { if (span) span.textContent = window.I18N.t("card.download"); }, 1800);
+        clearTimeout(savedTimer);
+        savedTimer = window.setTimeout(() => {
+          span.setAttribute("data-i18n", "card.download");
+          span.textContent = window.I18N.t("card.download");
+        }, 1800);
       }
     } catch (e) { window.open(SMILE_DOWNLOAD, "_blank"); }
   }
