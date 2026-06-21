@@ -1,0 +1,20 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+.vscode/
+.idea/
+
+# scratch / build helpers (not part of the site)
+__*.html
+__*.py
+
+# original full-size source images kept in the project root.
+# The site loads the optimized copies in assets/images/ instead.
+/baby card.png
+/baby card smile.png
+/baby card cry.png
+/card cn.jpg
+/card en.jpg
+/card og.png

@@ -1,0 +1,9 @@
+# Netlify config — this is a plain static site, no build step.
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/assets/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
+  />
+  <meta name="theme-color" content="#0e0b1e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="嬰兒滿月互動賀卡 · Baby Full-Month Interactive Card" />
+  <title>滿月賀卡 · Full-Moon Card</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Noto+Serif+TC:wght@500;700;900&family=Quicksand:wght@500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body data-lang="zh" data-screen="card" data-mood="calm">
+  <div id="app" class="app">
+    <!-- ============ AMBIENT NIGHT SKY (shared background) ============ -->
+    <div class="sky" aria-hidden="true">
+      <div class="sky__moon"></div>
+      <div class="sky__stars"></div>
+      <div class="sky__glow"></div>
+      <div class="sky__grain"></div>
+    </div>
+
+    <!-- ============ TOP BAR ============ -->
+    <header class="topbar">
+      <div class="topbar__brand">
+        <span class="topbar__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M21 12.9A8.5 8.5 0 1 1 11.1 3a6.6 6.6 0 0 0 9.9 9.9z" fill="currentColor"/></svg>
+        </span>
+        <span class="topbar__title" data-i18n="app.title">滿月賀卡</span>
+      </div>
+
+      <button id="lang-toggle" class="lang-toggle" type="button" aria-label="切換語言 / Switch language">
+        <span class="lang-toggle__opt" data-lang-opt="zh">中</span>
+        <span class="lang-toggle__thumb" aria-hidden="true"></span>
+        <span class="lang-toggle__opt" data-lang-opt="en">EN</span>
+      </button>
+    </header>
+
+    <!-- ============ SCREENS ============ -->
+    <main class="screens">
+      <!-- ---------- Screen 1 : 賀卡 ---------- -->
+      <section id="screen-card" class="screen screen--card is-active" aria-label="滿月賀卡">
+        <div class="photo-wrap">
+          <div class="photo-halo" aria-hidden="true"></div>
+          <div class="photo-stage" id="photo-stage">
+            <img class="photo-layer" data-state="calm"  alt="" decoding="async" />
+            <img class="photo-layer" data-state="smile" alt="" decoding="async" />
+            <img class="photo-layer" data-state="cry"   alt="" decoding="async" />
+            <div class="stage-frame" aria-hidden="true"></div>
+            <div class="stage-sheen" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <div class="card-hud">
+          <!-- 3-stage mood track : 哭 · 不哭 · 笑 -->
+          <div class="mood" id="mood" role="img" aria-label="寶寶心情 / Baby mood">
+            <span class="mood__line" aria-hidden="true"><span class="mood__fill" id="mood-fill"></span></span>
+            <div class="mood__node" data-mood-node="cry">
+              <span class="mood__face" aria-hidden="true">
+                <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12.5"/><circle cx="11.5" cy="14" r="1.1"/><circle cx="20.5" cy="14" r="1.1"/><path d="M11 21q5-5 10 0"/><path d="M11.5 17c-1 2-1 3 0 4 1-1 1-2 0-4z" class="tear"/></svg>
+              </span>
+              <span class="mood__label" data-i18n="mood.cry">哭</span>
+            </div>
+            <div class="mood__node" data-mood-node="calm">
+              <span class="mood__face" aria-hidden="true">
+                <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12.5"/><path d="M9.5 14q2 2 4 0"/><path d="M18.5 14q2 2 4 0"/><path d="M12.5 20h7"/></svg>
+              </span>
+              <span class="mood__label" data-i18n="mood.calm">不哭</span>
+            </div>
+            <div class="mood__node" data-mood-node="smile">
+              <span class="mood__face" aria-hidden="true">
+                <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="12.5"/><circle cx="11.5" cy="13.5" r="1.1"/><circle cx="20.5" cy="13.5" r="1.1"/><path d="M10.5 18q5.5 6 11 0"/></svg>
+              </span>
+              <span class="mood__label" data-i18n="mood.smile">笑</span>
+            </div>
+          </div>
+
+          <div class="shake-hint" id="shake-hint">
+            <span class="shake-hint__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="7.5" y="3" width="9" height="18" rx="2.4"/><path d="M11 18.5h2"/>
+                <path d="M4 8.5c-.8 1-.8 2.2 0 3.2M20 8.5c.8 1 .8 2.2 0 3.2" opacity=".8"/>
+              </svg>
+            </span>
+            <span class="shake-hint__text" data-i18n="card.hint">緩慢地搖晃手機，逗寶寶笑</span>
+          </div>
+
+          <button class="btn-download" id="download-smile" type="button">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/>
+            </svg>
+            <span data-i18n="card.download">儲存這張笑臉</span>
+          </button>
+        </div>
+
+        <!-- Motion permission gate -->
+        <div class="motion-gate" id="motion-gate">
+          <div class="motion-gate__box">
+            <div class="motion-gate__moon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" width="62" height="62"><path d="M54 35a22 22 0 1 1-25-25 17 17 0 0 0 25 25z" fill="currentColor"/></svg>
+            </div>
+            <h2 class="motion-gate__title" data-i18n="motion.gateTitle">滿月誌喜</h2>
+            <p class="motion-gate__desc" data-i18n="motion.gateDesc">輕觸開始，緩緩搖晃手機，喚醒沉睡的寶寶</p>
+            <button id="motion-start" class="btn-primary" type="button">
+              <span data-i18n="motion.start">開始</span>
+            </button>
+            <p class="motion-gate__note" id="motion-note" hidden></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- Screen 2 : 紀念小卡 ---------- -->
+      <section id="screen-draw" class="screen screen--draw" aria-label="紀念小卡">
+        <div class="draw-area" id="draw-area">
+          <!-- closed keepsake (pre-open) -->
+          <div class="deck" id="deck">
+            <button class="card-back" id="card-back" type="button" aria-label="翻開紀念小卡 / Open keepsake card">
+              <span class="card-back__inner">
+                <span class="card-back__rune card-back__rune--tl" aria-hidden="true">✦</span>
+                <span class="card-back__rune card-back__rune--tr" aria-hidden="true">✦</span>
+                <span class="card-back__rune card-back__rune--bl" aria-hidden="true">✦</span>
+                <span class="card-back__rune card-back__rune--br" aria-hidden="true">✦</span>
+                <span class="card-back__crest" aria-hidden="true">
+                  <svg viewBox="0 0 100 100" width="96" height="96">
+                    <defs>
+                      <radialGradient id="crestG" cx="50%" cy="40%" r="62%">
+                        <stop offset="0%" stop-color="#ffe9b8"/><stop offset="55%" stop-color="#e6b85a"/><stop offset="100%" stop-color="#8a5fc0"/>
+                      </radialGradient>
+                    </defs>
+                    <circle cx="50" cy="50" r="33" fill="none" stroke="url(#crestG)" stroke-width="2"/>
+                    <circle cx="50" cy="50" r="26" fill="none" stroke="#f1cf86" stroke-width="0.7" opacity="0.65"/>
+                    <path d="M50 26a24 24 0 1 0 15 43 19 19 0 1 1-15-43z" fill="url(#crestG)"/>
+                    <g fill="#ffe9b8"><circle cx="50" cy="13" r="1.6"/><circle cx="87" cy="50" r="1.6"/><circle cx="50" cy="87" r="1.6"/><circle cx="13" cy="50" r="1.6"/></g>
+                  </svg>
+                </span>
+              </span>
+              <span class="card-back__shine" aria-hidden="true"></span>
+            </button>
+            <p class="deck__label" data-i18n="draw.deckLabel">輕觸翻開你的紀念小卡</p>
+          </div>
+
+          <!-- opened keepsake (transparent / floating) -->
+          <div class="drawn" id="drawn" hidden>
+            <button class="drawn__card" id="drawn-card" type="button" aria-label="放大觀看特寫 / Tap for close-up">
+              <span class="drawn__shadow" aria-hidden="true"></span>
+              <img id="draw-card-img" alt="" decoding="async" />
+            </button>
+            <span class="drawn__zoom" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/>
+              </svg>
+              <span data-i18n="draw.tapToZoom">輕觸看特寫</span>
+            </span>
+            <button class="btn-ghost" id="draw-again" type="button" data-i18n="draw.again">再翻一次</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ============ BOTTOM NAV (floating) ============ -->
+    <nav class="tabbar" aria-label="主選單 / Main menu">
+      <button class="tab is-active" data-screen="card" type="button">
+        <span class="tab__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M21 12.9A8.5 8.5 0 1 1 11.1 3a6.6 6.6 0 0 0 9.9 9.9z" fill="currentColor"/></svg>
+        </span>
+        <span class="tab__label" data-i18n="nav.card">賀卡</span>
+      </button>
+      <button class="tab" data-screen="draw" type="button">
+        <span class="tab__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round">
+            <rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M12 15.2s-3-1.7-3-3.8a1.6 1.6 0 0 1 3-.7 1.6 1.6 0 0 1 3 .7c0 2.1-3 3.8-3 3.8z" fill="currentColor" stroke="none"/>
+          </svg>
+        </span>
+        <span class="tab__label" data-i18n="nav.draw">紀念小卡</span>
+      </button>
+      <span class="tab__pill" aria-hidden="true"></span>
+    </nav>
+  </div>
+
+  <!-- ============ LIGHTBOX (full-screen close-up) ============ -->
+  <div class="lightbox" id="lightbox" hidden aria-modal="true" role="dialog">
+    <canvas class="lightbox__fx" id="lightbox-fx" aria-hidden="true"></canvas>
+    <div class="lightbox__scene" id="lightbox-scene">
+      <div class="lightbox__frame" id="lightbox-frame">
+        <img id="lightbox-img" alt="卡片特寫 / Card close-up" decoding="async" />
+        <div class="glow glow--candle" aria-hidden="true"></div>
+        <div class="glow glow--book" aria-hidden="true"></div>
+        <div class="glow glow--flowerL" aria-hidden="true"></div>
+        <div class="glow glow--flowerR" aria-hidden="true"></div>
+        <div class="lightbox__breath" aria-hidden="true"></div>
+      </div>
+    </div>
+    <button class="lightbox__close" id="lightbox-close" type="button" aria-label="關閉 / Close">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <p class="lightbox__caption" data-i18n="lightbox.caption">輕觸並傾斜畫面，感受魔法</p>
+  </div>
+
+  <script src="i18n.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
