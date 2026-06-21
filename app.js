@@ -14,20 +14,26 @@
     cardOg:    ["assets/images/card-og.webp",    "assets/images/card-og.png"],
     cardZh:    ["assets/images/card-cn.webp",    "assets/images/card-cn.png"],
     cardEn:    ["assets/images/card-en.webp",    "assets/images/card-en.png"],
+    cardBack:  ["assets/images/card-back.webp"],
   };
-  const SMILE_DOWNLOAD = "assets/images/baby-smile.png"; // full-res for saving
+  // full-res photo to save, per current mood (download grabs the CURRENT stage)
+  const DOWNLOAD_IMG  = { cry: "assets/images/baby-cry.png", calm: "assets/images/baby-card.png", smile: "assets/images/baby-smile.png" };
+  const DOWNLOAD_NAME = { cry: "滿月賀卡-寶寶哭臉.png", calm: "滿月賀卡-寶寶熟睡.png", smile: "滿月賀卡-寶寶笑臉.png" };
 
   // Shake engine — energy is a time-decaying "shake budget" mapped to 3 moods.
+  // Tuned for a GENTLE "rocking a baby to sleep" feel: a NOISE_FLOOR ignores
+  // tiny hand jitter, and you need ~1s of sustained rocking to reach a smile.
   const SHAKE = {
-    MAX: 120,
-    SMILE_ON: 70,   // calm  → smile
-    SMILE_OFF: 48,  // smile → calm
-    CRY_LEAVE: 26,  // cry   → calm
-    CRY_ENTER: 12,  // calm  → cry
-    TAU: 600,       // ms decay time-constant (frame-rate independent)
-    MOTION_K: 10,   // accel delta (m/s²) → energy
-    POINTER_K: 0.9, // pointer move (px) → energy (desktop fallback)
-    GRACE_MS: 200,  // debounce between mood flips
+    MAX: 130,
+    SMILE_ON: 80,    // calm  → smile
+    SMILE_OFF: 50,   // smile → calm
+    CRY_LEAVE: 30,   // cry   → calm
+    CRY_ENTER: 14,   // calm  → cry
+    TAU: 950,        // ms decay time-constant — slow/calm (frame-rate independent)
+    NOISE_FLOOR: 0.4,// accel delta below this (m/s²) is treated as 0 (ignore jitter)
+    MOTION_K: 8,     // accel delta (above floor) → energy
+    POINTER_K: 0.45, // pointer move (px, above 4px) → energy (desktop fallback)
+    GRACE_MS: 260,   // debounce between mood flips
   };
 
   const REDUCE_MOTION = window.matchMedia &&
@@ -117,6 +123,7 @@
     state = next;
     lastFlipTs = performance.now();
     document.body.setAttribute("data-mood", next);
+    if (next === "smile") document.body.classList.add("dl-on"); // unlock download, then it stays
     updateHint();
   }
   function setFill() {
@@ -164,7 +171,8 @@
     if (!a || a.x == null) return;
     if (lastAcc) {
       const dx = (a.x || 0) - lastAcc.x, dy = (a.y || 0) - lastAcc.y, dz = (a.z || 0) - lastAcc.z;
-      addEnergy(Math.sqrt(dx * dx + dy * dy + dz * dz) * SHAKE.MOTION_K);
+      const mag = Math.sqrt(dx * dx + dy * dy + dz * dz) - SHAKE.NOISE_FLOOR;
+      if (mag > 0) addEnergy(mag * SHAKE.MOTION_K); // ignore sub-floor jitter
     }
     lastAcc = { x: a.x || 0, y: a.y || 0, z: a.z || 0 };
   }
@@ -179,7 +187,7 @@
   stage.addEventListener("pointermove", (e) => {
     const x = e.clientX, y = e.clientY;
     if (ptrLast) {
-      const m = Math.hypot(x - ptrLast.x, y - ptrLast.y);
+      const m = Math.hypot(x - ptrLast.x, y - ptrLast.y) - 4;
       if (m > 0) addEnergy(m * SHAKE.POINTER_K);
     }
     ptrLast = { x, y };
@@ -223,14 +231,15 @@
 
   /* ---- save the smile ---- */
   let savedTimer = 0;
-  async function downloadSmile() {
+  async function downloadCurrent() {
     const span = downloadBtn.querySelector("span");
+    const src = DOWNLOAD_IMG[state] || DOWNLOAD_IMG.smile;     // whatever stage is showing now
     try {
-      const res = await fetch(SMILE_DOWNLOAD);
+      const res = await fetch(src);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = "滿月賀卡-寶寶笑臉.png";
+      a.href = url; a.download = DOWNLOAD_NAME[state] || DOWNLOAD_NAME.smile;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       if (span) {
@@ -243,9 +252,9 @@
           span.textContent = window.I18N.t("card.download");
         }, 1800);
       }
-    } catch (e) { window.open(SMILE_DOWNLOAD, "_blank"); }
+    } catch (e) { window.open(src, "_blank"); }
   }
-  if (downloadBtn) downloadBtn.addEventListener("click", downloadSmile);
+  if (downloadBtn) downloadBtn.addEventListener("click", downloadCurrent);
 
   function debugReadout() {
     let el = $("#debug");
@@ -263,9 +272,11 @@
      ============================================================ */
   const deck = $("#deck");
   const cardBack = $("#card-back");
+  const cardBackImg = $("#card-back-img");
   const drawn = $("#drawn");
   const drawCardImg = $("#draw-card-img");
   const drawAgain = $("#draw-again");
+  setImg(cardBackImg, IMAGES.cardBack);
   const cardCandidates = () => (window.I18N.lang === "en" ? IMAGES.cardEn : IMAGES.cardZh);
   let isDrawing = false;
 
@@ -325,12 +336,14 @@
     particles = [];
     if (REDUCE_MOTION) return;
     const area = cw * ch;
-    const emberN = Math.round(Math.min(70, area / 14000));
-    const moteN = Math.round(Math.min(36, area / 26000));
-    const sparkN = Math.round(Math.min(26, area / 34000));
-    for (let i = 0; i < emberN; i++) particles.push({ type: "ember", x: rnd() * cw, y: rnd() * ch, r: .8 + rnd() * 2.2, vy: -(.15 + rnd() * .5), vx: (rnd() - .5) * .25, ph: rnd() * 6.28, sp: .02 + rnd() * .05, hue: 30 + rnd() * 22 });
-    for (let i = 0; i < moteN; i++) particles.push({ type: "mote", x: rnd() * cw, y: rnd() * ch, r: 1 + rnd() * 2.4, vy: (rnd() - .5) * .18, vx: (rnd() - .5) * .18, ph: rnd() * 6.28, sp: .015 + rnd() * .03, hue: rnd() < .5 ? 275 + rnd() * 25 : 95 + rnd() * 30 });
-    for (let i = 0; i < sparkN; i++) particles.push({ type: "spark", x: rnd() * cw, y: rnd() * ch, r: .6 + rnd() * 1.4, ph: rnd() * 6.28, sp: .05 + rnd() * .09, hue: 45 + rnd() * 15 });
+    const bokehN = Math.round(Math.min(9, area / 90000));   // big soft out-of-focus orbs (depth)
+    const emberN = Math.round(Math.min(46, area / 20000));  // warm rising embers
+    const moteN  = Math.round(Math.min(26, area / 30000));  // drifting magic motes
+    const sparkN = Math.round(Math.min(18, area / 42000));  // twinkling sparks
+    for (let i = 0; i < bokehN; i++) particles.push({ type: "bokeh", x: rnd()*cw, y: rnd()*ch, r: 26+rnd()*48, vy: -(0.04+rnd()*0.1), vx: (rnd()-.5)*0.08, ph: rnd()*6.28, sp: 0.005+rnd()*0.01, hue: rnd()<.5 ? 38+rnd()*12 : 270+rnd()*28 });
+    for (let i = 0; i < emberN; i++) particles.push({ type: "ember", x: rnd()*cw, y: rnd()*ch, r: 0.7+rnd()*1.7, vy: -(0.12+rnd()*0.4), vx: (rnd()-.5)*0.2, ph: rnd()*6.28, sp: 0.02+rnd()*0.045, hue: 32+rnd()*16 });
+    for (let i = 0; i < moteN; i++)  particles.push({ type: "mote",  x: rnd()*cw, y: rnd()*ch, r: 1+rnd()*2, vy: (rnd()-.5)*0.14, vx: (rnd()-.5)*0.14, ph: rnd()*6.28, sp: 0.012+rnd()*0.022, hue: rnd()<.5 ? 272+rnd()*26 : 100+rnd()*26 });
+    for (let i = 0; i < sparkN; i++) particles.push({ type: "spark", x: rnd()*cw, y: rnd()*ch, r: 0.7+rnd()*1.2, ph: rnd()*6.28, sp: 0.035+rnd()*0.06, hue: 46+rnd()*12 });
   }
   function lbTick() {
     if (!lbOpen) return;
@@ -345,19 +358,34 @@
       ctx.clearRect(0, 0, cw, ch);
       ctx.globalCompositeOperation = "lighter";
       for (let i = 0; i < particles.length; i++) {
-        const p = particles[i]; p.ph += p.sp; const tw = .5 + .5 * Math.sin(p.ph);
+        const p = particles[i];
+        p.ph += p.sp;
+        const tw = 0.5 + 0.5 * Math.sin(p.ph);
         if (p.type === "spark") {
-          const al = tw * tw;
-          if (al > .04) { ctx.globalAlpha = al; ctx.fillStyle = "hsl(" + p.hue + ",100%,85%)"; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (.6 + tw), 0, 6.2832); ctx.fill(); }
+          const al = tw * tw * tw; // sharp, jewel-like twinkle
+          if (al > 0.03) {
+            const r = p.r * (0.7 + tw);
+            ctx.globalAlpha = al * 0.55;
+            const hg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 5);
+            hg.addColorStop(0, "hsla(" + p.hue + ",100%,82%,1)");
+            hg.addColorStop(1, "hsla(" + p.hue + ",100%,82%,0)");
+            ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(p.x, p.y, r * 5, 0, 6.2832); ctx.fill();
+            ctx.globalAlpha = al;
+            ctx.fillStyle = "hsl(" + p.hue + ",100%,93%)";
+            ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.8, 0, 6.2832); ctx.fill();
+          }
         } else {
           p.x += p.vx; p.y += p.vy;
-          if (p.type === "ember") p.x += Math.sin(p.ph) * .3;
-          if (p.y < -6) p.y = ch + 6; if (p.y > ch + 6) p.y = -6;
-          if (p.x < -6) p.x = cw + 6; if (p.x > cw + 6) p.x = -6;
-          ctx.globalAlpha = (p.type === "ember" ? .5 : .4) * (.4 + .6 * tw);
-          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 3.5);
-          g.addColorStop(0, "hsla(" + p.hue + ",100%,72%,1)"); g.addColorStop(1, "hsla(" + p.hue + ",100%,60%,0)");
-          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 3.5, 0, 6.2832); ctx.fill();
+          if (p.type === "ember") p.x += Math.sin(p.ph) * 0.3;
+          const rad = p.type === "bokeh" ? p.r : p.r * 3.6;
+          if (p.y < -rad) p.y = ch + rad; else if (p.y > ch + rad) p.y = -rad;
+          if (p.x < -rad) p.x = cw + rad; else if (p.x > cw + rad) p.x = -rad;
+          ctx.globalAlpha = p.type === "bokeh" ? (0.05 + 0.05 * tw)
+            : (p.type === "ember" ? 0.5 : 0.42) * (0.4 + 0.6 * tw);
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
+          g.addColorStop(0, "hsla(" + p.hue + ",100%,72%,1)");
+          g.addColorStop(1, "hsla(" + p.hue + ",100%,62%,0)");
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, 6.2832); ctx.fill();
         }
       }
       ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
@@ -410,7 +438,14 @@
      ============================================================ */
   window.I18N.onChange(() => {
     updateHint();
-    if (drawn && !drawn.hidden) setImg(drawCardImg, cardCandidates());
+    if (drawn && !drawn.hidden) {
+      drawCardImg.style.opacity = "0";  // crossfade the keepsake to the other language
+      setImg(drawCardImg, cardCandidates());
+      drawCardImg.addEventListener("load", function once() {
+        drawCardImg.style.opacity = "1";
+        drawCardImg.removeEventListener("load", once);
+      });
+    }
     movePill();
   });
 

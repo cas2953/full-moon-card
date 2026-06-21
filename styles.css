@@ -63,6 +63,11 @@ img { display: block; max-width: 100%; }
 button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; padding: 0; }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 8px; }
 
+/* smooth language switch: translated text crossfades, the keepsake image fades */
+[data-i18n] { transition: opacity .22s ease; }
+body.lang-switching [data-i18n] { opacity: 0; }
+#draw-card-img { transition: opacity .28s ease; }
+
 /* ---------- app shell ---------- */
 .app {
   position: relative;
@@ -283,18 +288,19 @@ body[data-mood="cry"]   .mood__node[data-mood-node="cry"] .mood__face .tear { op
 @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @keyframes wiggle { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
 
-/* download button — only present on the smile mood */
+/* download button — always occupies its slot (no layout jump); fades in once
+   the baby has smiled at least once, then stays put */
 .btn-download {
-  display: none; align-items: center; gap: 8px;
+  display: inline-flex; align-items: center; gap: 8px;
   padding: 11px 22px; border-radius: 999px; font-weight: 700; font-size: 14.5px;
   color: #3a2a08; background: linear-gradient(135deg, #ffe6a3, var(--gold-2));
   box-shadow: 0 10px 26px rgba(231,189,98,.45), inset 0 1px 0 rgba(255,255,255,.6);
-  transition: transform .15s ease;
+  opacity: 0; transform: translateY(12px); pointer-events: none;
+  transition: opacity .5s ease, transform .5s cubic-bezier(.2,.8,.2,1.25), background .3s ease;
 }
 .btn-download svg { stroke: #3a2a08; }
-body[data-mood="smile"] .btn-download { display: inline-flex; animation: popUp .45s cubic-bezier(.2,.8,.2,1.3) both; }
+body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
 .btn-download:active { transform: translateY(2px) scale(.97); }
-@keyframes popUp { 0% { opacity: 0; transform: translateY(10px) scale(.9); } 100% { opacity: 1; transform: none; } }
 
 /* motion gate */
 .motion-gate {
@@ -351,18 +357,18 @@ body[data-mood="smile"] .btn-download { display: inline-flex; animation: popUp .
 /* closed keepsake */
 .deck { display: flex; flex-direction: column; align-items: center; gap: 24px; }
 .card-back {
-  position: relative; width: min(64vw, 224px); aspect-ratio: 5 / 7; border-radius: 18px;
-  background: radial-gradient(120% 90% at 50% 16%, #4a2f86 0%, #2c1a55 55%, #190f38 100%);
-  box-shadow: 0 30px 64px rgba(0,0,0,.6), inset 0 0 0 2px rgba(240,210,138,.5), inset 0 0 0 7px rgba(120,80,180,.32);
-  overflow: hidden; transform-style: preserve-3d; animation: floatCard 5s ease-in-out infinite; transition: transform .2s ease;
+  position: relative; width: min(62vw, 212px); aspect-ratio: 669 / 997;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 26px 40px rgba(0,0,0,.6)) drop-shadow(0 0 26px rgba(120,150,235,.4));
+  animation: floatCard 5s ease-in-out infinite; transition: transform .2s ease;
 }
 .card-back:active { transform: scale(.97); }
-.card-back__inner { position: absolute; inset: 9px; border-radius: 12px; box-shadow: inset 0 0 0 1px rgba(240,210,138,.32); display: flex; align-items: center; justify-content: center; }
-.card-back__crest { filter: drop-shadow(0 0 12px rgba(240,210,138,.6)); animation: pulseGlow 3.4s ease-in-out infinite; }
-.card-back__rune { position: absolute; color: var(--gold); font-size: 13px; opacity: .8; animation: twinkle 2.6s ease-in-out infinite; }
-.card-back__rune--tl { top: 14px; left: 14px; } .card-back__rune--tr { top: 14px; right: 14px; animation-delay: .5s; }
-.card-back__rune--bl { bottom: 14px; left: 14px; animation-delay: 1s; } .card-back__rune--br { bottom: 14px; right: 14px; animation-delay: 1.5s; }
-.card-back__shine { position: absolute; inset: 0; background: linear-gradient(120deg, transparent 38%, rgba(255,255,255,.3) 50%, transparent 62%); background-size: 250% 250%; animation: sheen 4.5s ease-in-out infinite; }
+.card-back__img { width: 100%; height: 100%; object-fit: contain; }
+.card-back__shine {
+  position: absolute; inset: 7% 6%; pointer-events: none; border-radius: 9%;
+  background: linear-gradient(120deg, transparent 40%, rgba(255,255,255,.26) 50%, transparent 60%);
+  background-size: 250% 250%; mix-blend-mode: overlay; animation: sheen 4.8s ease-in-out infinite;
+}
 .deck__label { font-family: var(--font-serif); font-size: 18px; color: var(--gold); letter-spacing: .4px; text-align: center; }
 
 @keyframes floatCard { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-12px) rotate(1deg); } }
@@ -473,10 +479,19 @@ body[data-mood="smile"] .btn-download { display: inline-flex; animation: popUp .
   transition: transform .15s ease, background .2s ease;
 }
 .lightbox__close:active { transform: scale(.9); background: rgba(255,255,255,.24); }
-.lightbox__caption {
-  position: absolute; left: 0; right: 0; bottom: calc(var(--safe-b) + 16px); z-index: 3; margin: 0;
-  text-align: center; font-family: var(--font-serif); font-size: 15px; letter-spacing: .4px;
-  color: rgba(240,210,138,.92); text-shadow: 0 2px 10px rgba(0,0,0,.7); animation: bob 3.2s ease-in-out infinite;
+/* flowing light/dark over the close-up (soft-light blend, slow drift) */
+.lightbox__lumin {
+  position: absolute; inset: -25%; pointer-events: none; mix-blend-mode: soft-light;
+  background:
+    radial-gradient(38% 32% at 30% 28%, rgba(255,240,205,.40), transparent 60%),
+    radial-gradient(44% 38% at 74% 72%, rgba(150,110,225,.34), transparent 62%),
+    radial-gradient(40% 30% at 60% 48%, rgba(150,255,185,.18), transparent 60%);
+  animation: lumin 13s ease-in-out infinite alternate;
+}
+@keyframes lumin {
+  0%   { transform: translate(-4%, -3%) scale(1.05); opacity: .85; }
+  50%  { transform: translate(3%, 4%)  scale(1.12); opacity: 1; }
+  100% { transform: translate(-1%, 2%) scale(1.06); opacity: .9; }
 }
 
 /* ============================================================
@@ -507,9 +522,10 @@ body[data-mood="smile"] .btn-download { display: inline-flex; animation: popUp .
   .sky__stars, .stage-sheen, .shake-hint, .shake-hint__icon, .photo-halo,
   .btn-download, .motion-gate__moon, .btn-primary::after, .card-back, .card-back__crest,
   .card-back__rune, .card-back__shine, .drawn, .drawn.is-revealed, .drawn__zoom,
-  .lightbox__frame, .lightbox__frame img, .glow, .lightbox__breath, .lightbox__caption {
+  .lightbox__frame, .lightbox__frame img, .glow, .lightbox__breath, .lightbox__lumin {
     animation: none !important;
   }
   .photo-layer { transition: opacity .3s ease; }
+  .btn-download { transform: none !important; }
   .lang-toggle__thumb, .tab__pill { transition: transform .15s ease; }
 }

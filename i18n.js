@@ -21,7 +21,7 @@
       "card.hint": "緩慢地搖晃手機，逗寶寶笑",
       "card.hintSmile": "寶寶笑了！繼續輕輕搖晃",
       "card.hintCry": "寶寶哭了…再搖一搖哄哄他",
-      "card.download": "儲存這張笑臉",
+      "card.download": "儲存這張賀卡",
       "card.saved": "已儲存 ✓",
 
       "mood.cry": "哭",
@@ -49,7 +49,7 @@
       "card.hint": "Slowly shake your phone to make the baby smile",
       "card.hintSmile": "The baby is smiling! Keep gently shaking",
       "card.hintCry": "The baby is crying… shake a little to soothe",
-      "card.download": "Save this smile",
+      "card.download": "Save this card",
       "card.saved": "Saved ✓",
 
       "mood.cry": "Crying",
@@ -95,8 +95,15 @@
     if ((lang !== "zh" && lang !== "en") || lang === current) return;
     current = lang;
     localStorage.setItem(STORAGE_KEY, lang);
-    apply();
-    subscribers.forEach((fn) => { try { fn(current); } catch (e) {} });
+    // toggle thumb / lang attr react immediately; text crossfades
+    document.body.setAttribute("data-lang", current);
+    document.documentElement.lang = HTML_LANG[current];
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const commit = () => { apply(); subscribers.forEach((fn) => { try { fn(current); } catch (e) {} }); };
+    if (reduce) { commit(); return; }
+    document.body.classList.add("lang-switching");
+    window.setTimeout(commit, 200);
+    window.setTimeout(() => document.body.classList.remove("lang-switching"), 420);
   }
 
   function toggle() { set(current === "zh" ? "en" : "zh"); }

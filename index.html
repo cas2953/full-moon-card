@@ -122,25 +122,7 @@
           <!-- closed keepsake (pre-open) -->
           <div class="deck" id="deck">
             <button class="card-back" id="card-back" type="button" aria-label="翻開紀念小卡 / Open keepsake card">
-              <span class="card-back__inner">
-                <span class="card-back__rune card-back__rune--tl" aria-hidden="true">✦</span>
-                <span class="card-back__rune card-back__rune--tr" aria-hidden="true">✦</span>
-                <span class="card-back__rune card-back__rune--bl" aria-hidden="true">✦</span>
-                <span class="card-back__rune card-back__rune--br" aria-hidden="true">✦</span>
-                <span class="card-back__crest" aria-hidden="true">
-                  <svg viewBox="0 0 100 100" width="96" height="96">
-                    <defs>
-                      <radialGradient id="crestG" cx="50%" cy="40%" r="62%">
-                        <stop offset="0%" stop-color="#ffe9b8"/><stop offset="55%" stop-color="#e6b85a"/><stop offset="100%" stop-color="#8a5fc0"/>
-                      </radialGradient>
-                    </defs>
-                    <circle cx="50" cy="50" r="33" fill="none" stroke="url(#crestG)" stroke-width="2"/>
-                    <circle cx="50" cy="50" r="26" fill="none" stroke="#f1cf86" stroke-width="0.7" opacity="0.65"/>
-                    <path d="M50 26a24 24 0 1 0 15 43 19 19 0 1 1-15-43z" fill="url(#crestG)"/>
-                    <g fill="#ffe9b8"><circle cx="50" cy="13" r="1.6"/><circle cx="87" cy="50" r="1.6"/><circle cx="50" cy="87" r="1.6"/><circle cx="13" cy="50" r="1.6"/></g>
-                  </svg>
-                </span>
-              </span>
+              <img class="card-back__img" id="card-back-img" alt="" decoding="async" />
               <span class="card-back__shine" aria-hidden="true"></span>
             </button>
             <p class="deck__label" data-i18n="draw.deckLabel">輕觸翻開你的紀念小卡</p>
@@ -205,6 +187,7 @@
     <div class="lightbox__scene" id="lightbox-scene">
       <div class="lightbox__frame" id="lightbox-frame">
         <img id="lightbox-img" alt="卡片特寫 / Card close-up" decoding="async" />
+        <div class="lightbox__lumin" aria-hidden="true"></div>
         <div class="glow glow--candle" aria-hidden="true"></div>
         <div class="glow glow--book" aria-hidden="true"></div>
         <div class="glow glow--flowerL" aria-hidden="true"></div>
@@ -215,7 +198,6 @@
     <button class="lightbox__close" id="lightbox-close" type="button" aria-label="關閉 / Close">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
-    <p class="lightbox__caption" data-i18n="lightbox.caption">輕觸並傾斜畫面，感受魔法</p>
   </div>
 
   <script src="i18n.js" defer></script>
