@@ -21,23 +21,22 @@
   const DOWNLOAD_IMG  = { cry: "assets/images/baby-cry.png", calm: "assets/images/baby-card.png", smile: "assets/images/baby-smile.png" };
   const DOWNLOAD_NAME = { cry: "滿月賀卡-寶寶哭臉.png", calm: "滿月賀卡-寶寶熟睡.png", smile: "滿月賀卡-寶寶笑臉.png" };
 
-  // Shake engine — energy is a time-decaying "shake budget" mapped to 3 moods.
-  // Calm "rocking a baby to sleep" feel: a high NOISE_FLOOR ignores jitter, slow
-  // decay + a randomized per-stage DWELL keep each mood on screen 2.5–5s so it
-  // never flickers. ── Tune on a real device via ?debug ──
+  // Shake → a single "soothe level" (0–1). Rocking raises it slowly; stopping
+  // drains it. The mood is read DIRECTLY from the level, so the progress bar
+  // (= level) and the active 哭/不哭/笑 node ALWAYS agree. Deliberately calm:
+  // jitter below NOISE_FLOOR is ignored and it takes ~2–3s of real rocking to
+  // fill. ── If still too sensitive: raise NOISE_FLOOR or lower RISE (via ?debug) ──
   const SHAKE = {
-    MAX: 160,
-    SMILE_ON: 110,    // calm → smile (high → needs real sustained rocking)
-    SMILE_OFF: 38,    // smile → calm (only after dwell)
-    CRY_LEAVE: 34,    // cry → calm (rocking soothes — no dwell upward)
-    CRY_ENTER: 10,    // calm → cry (only after dwell)
-    TAU: 1500,        // ms decay time-constant — very slow (moods linger)
-    NOISE_FLOOR: 1.2, // accel delta below this (m/s²) → 0 (ignore jitter)
-    MOTION_K: 4,      // accel delta (above floor) → energy
-    POINTER_K: 0.35,  // pointer move (px, above 4px) → energy (desktop fallback)
-    DWELL_MIN: 2500,  // min ms to hold a mood before it may drop
-    DWELL_RAND: 2500, // + up to this much random (organic, non-mechanical)
-    GRACE_MS: 300,
+    NOISE_FLOOR: 2.2,   // accel delta below this (m/s²) is ignored (raise = less sensitive)
+    MOTION_CAP: 7,      // clamp big spikes so one jolt can't fill the bar
+    RISE: 0.0042,       // soothe gained per unit of above-floor motion
+    DRAIN: 0.18,        // soothe lost per second when not rocking
+    CRY_MAX: 0.34,      // level below → 哭
+    SMILE_MIN: 0.66,    // level above → 笑   (in between → 不哭)
+    HYST: 0.04,         // small hysteresis so the boundary doesn't flicker
+    POINTER_K: 0.45,    // pointer move (px above 4) → motion (desktop fallback)
+    START_LEVEL: 0.5,   // initial calm (sleeping) sits mid-bar
+    GRACE_MS: 250,
   };
 
   const REDUCE_MOTION = window.matchMedia &&
@@ -106,14 +105,14 @@
   setImg(layerSmile, IMAGES.babySmile);
   setImg(layerCry, IMAGES.babyCry);
 
-  let energy = 0;
-  let state = "calm";       // 'cry' | 'calm' | 'smile'
+  let level = SHAKE.START_LEVEL; // 0–1 soothe level (drives BOTH the bar and the mood)
+  let motionAccum = 0;           // above-floor motion summed since the last frame
+  let state = "calm";            // 'cry' | 'calm' | 'smile'
   let hasInteracted = false;
-  let lastFlipTs = 0;       // performance.now() the current mood was entered
-  let dwellMs = 0;          // randomized minimum time to hold the current mood
+  let lastFlipTs = 0;            // performance.now() the current mood was entered
   let loopRunning = false;
   let cardRaf = 0;
-  let manualMood = false;   // a tap pins the mood until the next real shake
+  let manualMood = false;        // a tap pins the mood until the next real shake
   let motionActive = false;
   let lastAcc = null;
   let lastTs = 0;
@@ -127,19 +126,32 @@
     if (!force && performance.now() - lastFlipTs < SHAKE.GRACE_MS) return;
     state = next;
     lastFlipTs = performance.now();
-    dwellMs = SHAKE.DWELL_MIN + Math.random() * SHAKE.DWELL_RAND; // organic hold time
     document.body.setAttribute("data-mood", next);
     if (next === "smile") document.body.classList.add("dl-on"); // unlock download, then it stays
     updateHint();
   }
   function setFill() {
     if (moodFill) moodFill.style.transform =
-      "scaleX(" + Math.max(0, Math.min(1, energy / SHAKE.MAX)).toFixed(3) + ")";
+      "scaleX(" + Math.max(0, Math.min(1, level)).toFixed(3) + ")"; // bar == level == truth
   }
-  function addEnergy(a) {
-    manualMood = false; // real motion resumes dynamic mood evaluation
-    energy = Math.min(SHAKE.MAX, energy + a);
-    if (energy > SHAKE.CRY_LEAVE) hasInteracted = true;
+  // mood is read straight from the level (with tiny hysteresis) → always matches the bar
+  function evalMood() {
+    if (manualMood) return;
+    let next = state;
+    if (state === "smile") {
+      if (level < SHAKE.SMILE_MIN - SHAKE.HYST) next = level < SHAKE.CRY_MAX ? "cry" : "calm";
+    } else if (state === "cry") {
+      if (level > SHAKE.CRY_MAX + SHAKE.HYST) next = level >= SHAKE.SMILE_MIN ? "smile" : "calm";
+    } else { // calm
+      if (level >= SHAKE.SMILE_MIN) next = "smile";
+      else if (level < SHAKE.CRY_MAX) next = "cry";
+    }
+    if (next !== state) setMood(next);
+  }
+  function addMotion(m) {           // m = above-floor accel magnitude (or px-equiv)
+    manualMood = false;
+    hasInteracted = true;
+    motionAccum += Math.min(m, SHAKE.MOTION_CAP);
     ensureLoop();
   }
 
@@ -147,26 +159,15 @@
     const t = typeof ts === "number" ? ts : lastTs;
     const dt = lastTs ? Math.min(80, t - lastTs) : 16;
     lastTs = t;
-    energy *= Math.exp(-dt / SHAKE.TAU);
-    if (energy < 0.4) energy = 0;
+    level += motionAccum * SHAKE.RISE;           // rise from rocking since last frame
+    motionAccum = 0;
+    level -= SHAKE.DRAIN * (dt / 1000);          // drain over time
+    level = Math.max(0, Math.min(1, level));
     setFill();
-
-    // 3-band hysteresis with a per-stage dwell: upward (soothing) is responsive,
-    // but a mood must be held for dwellMs before it can drop down (no flicker).
-    if (!manualMood) {
-      const dwelt = performance.now() - lastFlipTs >= dwellMs;
-      if (state === "smile") {
-        if (dwelt && energy < SHAKE.SMILE_OFF) setMood("calm");
-      } else if (state === "calm") {
-        if (energy >= SHAKE.SMILE_ON) setMood("smile");                          // up
-        else if (dwelt && hasInteracted && energy <= SHAKE.CRY_ENTER) setMood("cry");
-      } else { /* cry */
-        if (energy >= SHAKE.CRY_LEAVE) setMood("calm");                          // up
-      }
-    }
+    evalMood();
 
     if (DEBUG) debugReadout();
-    if (energy > 0) { cardRaf = requestAnimationFrame(tick); }
+    if (level > 0 && hasInteracted) { cardRaf = requestAnimationFrame(tick); }
     else { loopRunning = false; lastTs = 0; }
   }
   function ensureLoop() {
@@ -180,7 +181,7 @@
     if (lastAcc) {
       const dx = (a.x || 0) - lastAcc.x, dy = (a.y || 0) - lastAcc.y, dz = (a.z || 0) - lastAcc.z;
       const mag = Math.sqrt(dx * dx + dy * dy + dz * dz) - SHAKE.NOISE_FLOOR;
-      if (mag > 0) addEnergy(mag * SHAKE.MOTION_K); // ignore sub-floor jitter
+      if (mag > 0) addMotion(mag); // ignore sub-floor jitter
     }
     lastAcc = { x: a.x || 0, y: a.y || 0, z: a.z || 0 };
   }
@@ -196,7 +197,7 @@
     const x = e.clientX, y = e.clientY;
     if (ptrLast) {
       const m = Math.hypot(x - ptrLast.x, y - ptrLast.y) - 4;
-      if (m > 0) addEnergy(m * SHAKE.POINTER_K);
+      if (m > 0) addMotion(m * SHAKE.POINTER_K);
     }
     ptrLast = { x, y };
   });
@@ -204,14 +205,14 @@
 
   // Tap cycles the three moods (accessible / no-sensor fallback). Sticky (no decay loop).
   const TAP_NEXT = { calm: "smile", smile: "cry", cry: "calm" };
-  const TAP_ENERGY = { smile: SHAKE.MAX, calm: (SHAKE.SMILE_OFF + SHAKE.CRY_LEAVE) / 2, cry: 0 };
+  const TAP_LEVEL = { smile: 0.85, calm: 0.5, cry: 0.1 };
   stage.addEventListener("click", () => {
     hasInteracted = true;
     manualMood = true;                 // pin until next real shake
     if (cardRaf) cancelAnimationFrame(cardRaf);
     loopRunning = false; lastTs = 0;   // freeze the decay loop so the tap sticks
     const next = TAP_NEXT[state] || "smile";
-    energy = TAP_ENERGY[next];
+    level = TAP_LEVEL[next];
     setMood(next, true);
     setFill();
   });
@@ -273,7 +274,7 @@
       el.style.cssText = "position:fixed;left:8px;bottom:96px;z-index:9999;font:12px monospace;background:rgba(0,0,0,.6);color:#fff;padding:4px 8px;border-radius:6px;pointer-events:none";
       document.body.appendChild(el);
     }
-    el.textContent = "E:" + energy.toFixed(0) + " mood:" + state + " motion:" + motionActive;
+    el.textContent = "lvl:" + level.toFixed(2) + " mood:" + state + " motion:" + motionActive;
   }
 
   /* ============================================================
@@ -363,14 +364,12 @@
     particles = [];
     if (REDUCE_MOTION) return;
     const area = cw * ch;
-    const bokehN = Math.round(Math.min(9, area / 90000));   // big soft out-of-focus orbs (depth)
-    const emberN = Math.round(Math.min(46, area / 20000));  // warm rising embers
-    const moteN  = Math.round(Math.min(26, area / 30000));  // drifting magic motes
-    const sparkN = Math.round(Math.min(18, area / 42000));  // twinkling sparks
-    for (let i = 0; i < bokehN; i++) particles.push({ type: "bokeh", x: rnd()*cw, y: rnd()*ch, r: 26+rnd()*48, vy: -(0.04+rnd()*0.1), vx: (rnd()-.5)*0.08, ph: rnd()*6.28, sp: 0.005+rnd()*0.01, hue: rnd()<.5 ? 38+rnd()*12 : 270+rnd()*28 });
-    for (let i = 0; i < emberN; i++) particles.push({ type: "ember", x: rnd()*cw, y: rnd()*ch, r: 0.7+rnd()*1.7, vy: -(0.12+rnd()*0.4), vx: (rnd()-.5)*0.2, ph: rnd()*6.28, sp: 0.02+rnd()*0.045, hue: 32+rnd()*16 });
-    for (let i = 0; i < moteN; i++)  particles.push({ type: "mote",  x: rnd()*cw, y: rnd()*ch, r: 1+rnd()*2, vy: (rnd()-.5)*0.14, vx: (rnd()-.5)*0.14, ph: rnd()*6.28, sp: 0.012+rnd()*0.022, hue: rnd()<.5 ? 272+rnd()*26 : 100+rnd()*26 });
-    for (let i = 0; i < sparkN; i++) particles.push({ type: "spark", x: rnd()*cw, y: rnd()*ch, r: 0.7+rnd()*1.2, ph: rnd()*6.28, sp: 0.035+rnd()*0.06, hue: 46+rnd()*12 });
+    const bokehN = Math.round(Math.min(10, area / 80000)); // soft gold out-of-focus orbs (depth)
+    const dustN  = Math.round(Math.min(64, area / 13000)); // floating gold dust
+    const glitN  = Math.round(Math.min(34, area / 24000)); // glittering sparkles
+    for (let i = 0; i < bokehN; i++) particles.push({ type: "bokeh", x: rnd()*cw, y: rnd()*ch, r: 30+rnd()*56, vy: -(0.03+rnd()*0.07), vx: (rnd()-.5)*0.05, ph: rnd()*6.28, sp: 0.004+rnd()*0.008, hue: 40+rnd()*9 });
+    for (let i = 0; i < dustN; i++)  particles.push({ type: "dust",  x: rnd()*cw, y: rnd()*ch, r: 0.5+rnd()*1.5, vy: -(0.05+rnd()*0.28), vx: (rnd()-.5)*0.16, ph: rnd()*6.28, sp: 0.01+rnd()*0.03, hue: 42+rnd()*8 });
+    for (let i = 0; i < glitN; i++)  particles.push({ type: "glit",  x: rnd()*cw, y: rnd()*ch, r: 0.8+rnd()*1.5, ph: rnd()*6.28, sp: 0.03+rnd()*0.06, hue: 44+rnd()*8, big: rnd()<0.3 });
   }
   function lbTick() {
     if (!lbOpen) return;
@@ -390,30 +389,35 @@
         const p = particles[i];
         p.ph += p.sp;
         const tw = 0.5 + 0.5 * Math.sin(p.ph);
-        if (p.type === "spark") {
-          const al = tw * tw * tw; // sharp, jewel-like twinkle
-          if (al > 0.03) {
-            const r = p.r * (0.7 + tw);
-            ctx.globalAlpha = al * 0.55;
-            const hg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 5);
-            hg.addColorStop(0, "hsla(" + p.hue + ",100%,82%,1)");
-            hg.addColorStop(1, "hsla(" + p.hue + ",100%,82%,0)");
-            ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(p.x, p.y, r * 5, 0, 6.2832); ctx.fill();
-            ctx.globalAlpha = al;
-            ctx.fillStyle = "hsl(" + p.hue + ",100%,93%)";
-            ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.8, 0, 6.2832); ctx.fill();
+        if (p.type === "glit") {
+          const al = tw * tw * tw; // sharp glitter twinkle
+          if (al > 0.02) {
+            const r = p.r * (0.8 + tw);
+            ctx.globalAlpha = al * 0.5;            // soft golden bloom
+            const hg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 6);
+            hg.addColorStop(0, "hsla(" + p.hue + ",100%,80%,1)");
+            hg.addColorStop(1, "hsla(" + p.hue + ",100%,80%,0)");
+            ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(p.x, p.y, r * 6, 0, 6.2832); ctx.fill();
+            ctx.globalAlpha = al;                  // bright core
+            ctx.fillStyle = "hsl(" + p.hue + ",100%,94%)";
+            ctx.beginPath(); ctx.arc(p.x, p.y, r * 0.7, 0, 6.2832); ctx.fill();
+            if (p.big) {                           // 4-point glitter cross
+              ctx.globalAlpha = al * 0.8; ctx.strokeStyle = "hsla(" + p.hue + ",100%,88%,1)"; ctx.lineWidth = 0.8;
+              const L = r * 4.5;
+              ctx.beginPath(); ctx.moveTo(p.x - L, p.y); ctx.lineTo(p.x + L, p.y);
+              ctx.moveTo(p.x, p.y - L); ctx.lineTo(p.x, p.y + L); ctx.stroke();
+            }
           }
         } else {
           p.x += p.vx; p.y += p.vy;
-          if (p.type === "ember") p.x += Math.sin(p.ph) * 0.3;
-          const rad = p.type === "bokeh" ? p.r : p.r * 3.6;
+          if (p.type === "dust") p.x += Math.sin(p.ph) * 0.25;
+          const rad = p.type === "bokeh" ? p.r : p.r * 3.4;
           if (p.y < -rad) p.y = ch + rad; else if (p.y > ch + rad) p.y = -rad;
           if (p.x < -rad) p.x = cw + rad; else if (p.x > cw + rad) p.x = -rad;
-          ctx.globalAlpha = p.type === "bokeh" ? (0.05 + 0.05 * tw)
-            : (p.type === "ember" ? 0.5 : 0.42) * (0.4 + 0.6 * tw);
+          ctx.globalAlpha = p.type === "bokeh" ? (0.045 + 0.06 * tw) : (0.38 * (0.4 + 0.6 * tw));
           const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
           g.addColorStop(0, "hsla(" + p.hue + ",100%,72%,1)");
-          g.addColorStop(1, "hsla(" + p.hue + ",100%,62%,0)");
+          g.addColorStop(1, "hsla(" + p.hue + ",95%,60%,0)");
           ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, 6.2832); ctx.fill();
         }
       }
@@ -484,5 +488,5 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(movePill);
   window.setTimeout(movePill, 300);
 
-  if (DEBUG) window.__BABY = { SHAKE, get energy() { return energy; }, get mood() { return state; } };
+  if (DEBUG) window.__BABY = { SHAKE, get level() { return level; }, get mood() { return state; } };
 })();
