@@ -59,15 +59,20 @@
 
 ## 🚀 部署 / 更新
 
-主站部署於 **Netlify**（連動此 GitHub repo、免費 HTTPS）：<https://bobo-first-month.netlify.app>
-設定見 [netlify.toml](netlify.toml)（純靜態、發佈根目錄、圖片長快取）。原 **GitHub Pages** 鏡像仍可用：<https://cas2953.github.io/full-moon-card/>
+主站部署於 **Netlify**（免費 HTTPS）：<https://bobo-first-month.netlify.app>
+設定見 [netlify.toml](netlify.toml)（純靜態、圖片長快取）。原 **GitHub Pages** 鏡像仍可用：<https://cas2953.github.io/full-moon-card/>
 
-要更新內容，只要 push 到 `main`，Netlify（與 GitHub Pages）會自動重新發佈：
-```bash
-git add -A && git commit -m "update" && git push
-```
-
-首次上線（Netlify）：app.netlify.com → Add new site → Import an existing project → 選此 repo → Build command 留空、Publish directory 填 `.` → Deploy；之後到 **Site configuration → Change site name** 改成想要的 `名字.netlify.app`（隱藏 GitHub 帳號）。
+更新方式：
+- **GitHub Pages**：`git push` 到 `main` 會自動重新發佈。
+- **Netlify**：目前以 **CLI 手動部署**（未連動 git）。為避免把根目錄原圖一併公開，部署「只含網站檔」的乾淨內容即可，例如：
+  ```bash
+  # 站台已建立：name=bobo-first-month、id=8601a7b1-f626-48dc-aa38-f3d14aaf7ebd
+  rm -rf __publish && mkdir -p __publish/assets && \
+  cp index.html styles.css app.js i18n.js qr-code.png qr-code.svg netlify.toml __publish/ && \
+  cp -r assets/images __publish/assets/ && \
+  netlify deploy --prod --dir __publish --site bobo-first-month
+  ```
+  若想改成「push 自動部署」：到 Netlify 後台 **Site configuration → Build & deploy → Link repository** 連動本 repo（之後 push 即自動發佈，且原始原圖因被 `.gitignore` 排除而不會外洩）。
 
 > ⚠️ 陀螺儀（DeviceMotion）只有在 **HTTPS（或 localhost）** 才能運作，所以請用線上版（或下方本機 HTTPS）測試搖晃功能。
 

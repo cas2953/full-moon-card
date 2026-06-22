@@ -25,3 +25,6 @@ __*.py
 /baby card epic cn.jpg
 /baby card epic en.jpg
 /Card_back-Default.webp
+
+# Local Netlify folder
+.netlify
