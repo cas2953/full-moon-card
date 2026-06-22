@@ -62,7 +62,7 @@
     ROT_K: 0.025,        // rotationRate (deg/s) → accel-equivalent (so twist/wave also triggers)
     MOTION_CAP: 6,       // clamp big spikes so one jolt can't fill the bar
     DAMP: 0.10,          // how fast the drive eases toward raw motion (lower = more inertia)
-    RISE: 0.0026,        // soothe gained per unit of damped drive each frame
+    RISE: 0.00078,       // soothe gained per unit of damped drive each frame (rise speed; was 0.0026 → 30%)
     DRAIN: 0.07,         // soothe lost per second once decaying (lower = stages linger longer)
     HOLD_MS: 1500,       // after you stop rocking, hold the level this long before any decay
     DRAIN_RAMP_MS: 1200, // then ease the decay in over this long (gentle, not a cliff)
