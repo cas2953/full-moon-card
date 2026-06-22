@@ -13,33 +13,65 @@
     babyCry:   ["assets/images/baby-cry.webp",   "assets/images/baby-cry.png"],
     cardOg:    ["assets/images/card-og.webp",    "assets/images/card-og.png"],
     cardOgFg:  ["assets/images/card-og-fg.webp", "assets/images/card-og-fg.png"],
-    cardZh:    ["assets/images/card-cn.webp",    "assets/images/card-cn.png"],
+    cardZh:    ["assets/images/card-cn.webp",    "assets/images/card-cn.png"],      // 傳說 legendary
     cardEn:    ["assets/images/card-en.webp",    "assets/images/card-en.png"],
+    cardNormalZh: ["assets/images/card-normal-cn.webp", "assets/images/card-normal-cn.png"], // 普通 normal
+    cardNormalEn: ["assets/images/card-normal-en.webp", "assets/images/card-normal-en.png"],
+    cardRareZh:   ["assets/images/card-rare-cn.webp",   "assets/images/card-rare-cn.png"],   // 精良 rare (blue)
+    cardRareEn:   ["assets/images/card-rare-en.webp",   "assets/images/card-rare-en.png"],
+    cardEpicZh:   ["assets/images/card-epic-cn.webp",   "assets/images/card-epic-cn.png"],   // 史詩 epic
+    cardEpicEn:   ["assets/images/card-epic-en.webp",   "assets/images/card-epic-en.png"],
     cardBack:  ["assets/images/card-back.webp"],
   };
   // full-res photo to save, per current mood (download grabs the CURRENT stage)
   const DOWNLOAD_IMG  = { cry: "assets/images/baby-cry.png", calm: "assets/images/baby-card.png", smile: "assets/images/baby-smile.png" };
   const DOWNLOAD_NAME = { cry: "滿月賀卡-寶寶哭臉.png", calm: "滿月賀卡-寶寶熟睡.png", smile: "滿月賀卡-寶寶笑臉.png" };
 
+  // 紀念小卡稀有度 — 抽中機率：普通 > 精良 > 史詩 > 傳說 (40 / 30 / 20 / 10)
+  // 四張卡中央的寶寶照片相同，差別在外框寶石；翻卡特效與特寫光效會依稀有度分級。
+  const RARITY = {
+    normal:    { p: 0.40, zh: IMAGES.cardNormalZh, en: IMAGES.cardNormalEn, dl: { zh: "assets/images/card-normal-cn.png", en: "assets/images/card-normal-en.png" } },
+    rare:      { p: 0.30, zh: IMAGES.cardRareZh,   en: IMAGES.cardRareEn,   dl: { zh: "assets/images/card-rare-cn.png",   en: "assets/images/card-rare-en.png" } },
+    epic:      { p: 0.20, zh: IMAGES.cardEpicZh,   en: IMAGES.cardEpicEn,   dl: { zh: "assets/images/card-epic-cn.png",   en: "assets/images/card-epic-en.png" } },
+    legendary: { p: 0.10, zh: IMAGES.cardZh,       en: IMAGES.cardEn,       dl: { zh: "assets/images/card-cn.png",        en: "assets/images/card-en.png" } },
+  };
+  const RARITY_ORDER = ["normal", "rare", "epic", "legendary"];
+  function rollRarity() {
+    const r = Math.random(); let acc = 0;
+    for (let i = 0; i < RARITY_ORDER.length; i++) { acc += RARITY[RARITY_ORDER[i]].p; if (r < acc) return RARITY_ORDER[i]; }
+    return "legendary";
+  }
+  // particle density + parallax depth multipliers per rarity (close-up FX grading)
+  const RARITY_FX = {
+    normal:    { particles: 0,    depth: 0.40 },
+    rare:      { particles: 0.5,  depth: 0.70 },
+    epic:      { particles: 0.85, depth: 0.95 },
+    legendary: { particles: 1.25, depth: 1.20 },
+  };
+
   // Shake → a single "soothe level" (0–1). Rocking raises it; stopping drains it.
   // The mood is read DIRECTLY from the level, so the progress bar (= level) and the
-  // active 哭/不哭/笑 node ALWAYS agree. Deliberately WEIGHTY: raw motion first feeds
-  // a damped "drive" (DAMP) that has to spin up before the level moves — so a single
-  // flick does almost nothing and it takes a few seconds of *sustained* rocking to
-  // fill, then it eases back down. ── Too sensitive? raise NOISE_FLOOR or lower
-  // RISE/DAMP. Too sluggish? lower NOISE_FLOOR or raise RISE. (use ?debug to watch) ──
+  // active 哭/不哭/笑 node ALWAYS agree. Motion is detected on ALL axes — left/right
+  // (x), front/back (y), toward-screen (z) AND twisting (rotationRate) all count.
+  // Deliberately WEIGHTY & SLOW: raw motion feeds a damped "drive" (DAMP) before the
+  // level moves; when you stop, the level HOLDS for HOLD_MS then decays gently (DRAIN
+  // eased in over DRAIN_RAMP_MS) so each stage lingers. ── Too sensitive? raise
+  // NOISE_FLOOR. Stages too short? lower DRAIN or raise HOLD_MS. (use ?debug) ──
   const SHAKE = {
-    NOISE_FLOOR: 2.8,   // accel delta below this (m/s²) is ignored (raise = less sensitive)
-    MOTION_CAP: 6,      // clamp big spikes so one jolt can't fill the bar
-    DAMP: 0.10,         // how fast the drive eases toward the raw motion (lower = more damping/inertia)
-    RISE: 0.0028,       // soothe gained per unit of damped drive each frame
-    DRAIN: 0.16,        // soothe lost per second when not rocking
-    CRY_MAX: 0.34,      // level below → 哭
-    SMILE_MIN: 0.66,    // level above → 笑   (in between → 不哭)
-    HYST: 0.04,         // small hysteresis so the boundary doesn't flicker
-    POINTER_K: 0.40,    // pointer move (px above 4) → motion (desktop fallback)
-    START_LEVEL: 0.5,   // initial calm (sleeping) sits mid-bar
-    GRACE_MS: 280,
+    NOISE_FLOOR: 2.6,    // combined motion below this is ignored (raise = less sensitive)
+    ROT_K: 0.025,        // rotationRate (deg/s) → accel-equivalent (so twist/wave also triggers)
+    MOTION_CAP: 6,       // clamp big spikes so one jolt can't fill the bar
+    DAMP: 0.10,          // how fast the drive eases toward raw motion (lower = more inertia)
+    RISE: 0.0026,        // soothe gained per unit of damped drive each frame
+    DRAIN: 0.07,         // soothe lost per second once decaying (lower = stages linger longer)
+    HOLD_MS: 1500,       // after you stop rocking, hold the level this long before any decay
+    DRAIN_RAMP_MS: 1200, // then ease the decay in over this long (gentle, not a cliff)
+    CRY_MAX: 0.34,       // level below → 哭
+    SMILE_MIN: 0.66,     // level above → 笑   (in between → 不哭)
+    HYST: 0.05,          // hysteresis so the boundary doesn't flicker
+    POINTER_K: 0.40,     // pointer move (px above 4) → motion (desktop fallback)
+    START_LEVEL: 0.5,    // initial calm (sleeping) sits mid-bar
+    GRACE_MS: 400,       // min time on a mood before it can flip (debounce)
   };
 
   const REDUCE_MOTION = window.matchMedia &&
@@ -162,6 +194,7 @@
   let motionActive = false;
   let lastAcc = null;
   let lastTs = 0;
+  let lastMotionTs = 0;          // performance.now() of the last above-floor motion (for HOLD)
 
   const HINT_KEY = { cry: "card.hintCry", calm: "card.hint", smile: "card.hintSmile" };
   function updateHint() {
@@ -195,9 +228,10 @@
     }
     if (next !== state) setMood(next);
   }
-  function addMotion(m) {           // m = above-floor accel magnitude (or px-equiv)
+  function addMotion(m) {           // m = above-floor motion magnitude (or px-equiv)
     manualMood = false;
     hasInteracted = true;
+    lastMotionTs = performance.now();
     motionAccum += Math.min(m, SHAKE.MOTION_CAP);
     ensureLoop();
   }
@@ -210,7 +244,12 @@
     drive += (motionAccum - drive) * SHAKE.DAMP;
     motionAccum = 0;
     level += drive * SHAKE.RISE;                 // rise scaled by the damped drive
-    level -= SHAKE.DRAIN * (dt / 1000);          // drain over time
+    // hold the level after you stop, then ease the decay in gently (stages linger)
+    const sinceMotion = t - lastMotionTs;
+    if (sinceMotion > SHAKE.HOLD_MS) {
+      const ramp = Math.min(1, (sinceMotion - SHAKE.HOLD_MS) / SHAKE.DRAIN_RAMP_MS);
+      level -= SHAKE.DRAIN * ramp * (dt / 1000);
+    }
     level = Math.max(0, Math.min(1, level));
     setFill();
     evalMood();
@@ -224,16 +263,21 @@
     if (!loopRunning) { loopRunning = true; lastTs = 0; cardRaf = requestAnimationFrame(tick); }
   }
 
-  /* ---- accelerometer ---- */
+  /* ---- accelerometer (all three axes + rotation) ---- */
   function onMotion(e) {
+    let mag = 0;
     const a = e.accelerationIncludingGravity || e.acceleration;
-    if (!a || a.x == null) return;
-    if (lastAcc) {
-      const dx = (a.x || 0) - lastAcc.x, dy = (a.y || 0) - lastAcc.y, dz = (a.z || 0) - lastAcc.z;
-      const mag = Math.sqrt(dx * dx + dy * dy + dz * dz) - SHAKE.NOISE_FLOOR;
-      if (mag > 0) addMotion(mag); // ignore sub-floor jitter
+    if (a && a.x != null) {
+      if (lastAcc) {
+        const dx = (a.x || 0) - lastAcc.x, dy = (a.y || 0) - lastAcc.y, dz = (a.z || 0) - lastAcc.z;
+        mag += Math.sqrt(dx * dx + dy * dy + dz * dz); // x=left/right, y=front/back, z=toward-screen
+      }
+      lastAcc = { x: a.x || 0, y: a.y || 0, z: a.z || 0 };
     }
-    lastAcc = { x: a.x || 0, y: a.y || 0, z: a.z || 0 };
+    const rr = e.rotationRate;                          // twisting / waving the phone
+    if (rr) mag += (Math.abs(rr.alpha || 0) + Math.abs(rr.beta || 0) + Math.abs(rr.gamma || 0)) * SHAKE.ROT_K;
+    const over = mag - SHAKE.NOISE_FLOOR;
+    if (over > 0) addMotion(over);                      // ignore sub-floor jitter
   }
   function startMotion() {
     if (motionActive) return;
@@ -338,13 +382,19 @@
   const drawAgain = $("#draw-again");
   const drawArea = $("#draw-area");
   setImg(cardBackImg, IMAGES.cardBack);
-  const cardCandidates = () => (window.I18N.lang === "en" ? IMAGES.cardEn : IMAGES.cardZh);
+  let currentRarity = "legendary";              // re-rolled on every flip
+  const cardCandidates = () => {
+    const r = RARITY[currentRarity] || RARITY.legendary;
+    return window.I18N.lang === "en" ? r.en : r.zh;
+  };
   let isDrawing = false;
 
   function doDraw() {
     if (isDrawing) return;
     isDrawing = true;
-    if (drawArea && !REDUCE_MOTION) {              // legendary golden burst
+    currentRarity = rollRarity();                 // 普通 / 精良 / 史詩 / 傳說
+    if (drawArea) drawArea.dataset.rarity = currentRarity;  // CSS grades the burst & glow
+    if (drawArea && !REDUCE_MOTION) {             // reveal burst — intensity scales by rarity
       drawArea.classList.remove("is-bursting");
       void drawArea.offsetWidth;
       drawArea.classList.add("is-bursting");
@@ -376,7 +426,8 @@
   const downloadCardBtn = $("#download-card");
   if (downloadCardBtn) downloadCardBtn.addEventListener("click", () => {
     const en = window.I18N.lang === "en";
-    downloadFile(en ? "assets/images/card-en.png" : "assets/images/card-cn.png",
+    const r = RARITY[currentRarity] || RARITY.legendary;   // save whichever card you drew
+    downloadFile(en ? r.dl.en : r.dl.zh,
                  en ? "Bobo-keepsake-card.png" : "波波紀念卡.png",
                  downloadCardBtn.querySelector("span"));
   });
@@ -398,7 +449,7 @@
   setImg(lbFg, IMAGES.cardOgFg);
   setImg(lbBackdrop, IMAGES.cardOg);   // og scene, blown-up + blurred, extends behind the frame
 
-  let lbOpen = false, lbRaf = 0, lbReturnFocus = null;
+  let lbOpen = false, lbRaf = 0, lbReturnFocus = null, lbDepth = 1;
   const ctx = lbCanvas ? lbCanvas.getContext("2d") : null;
   let particles = [], cw = 0, ch = 0, dpr = 1;
   const par = { tx: 0, ty: 0, cx: 0, cy: 0, frame: 0 };
@@ -415,10 +466,12 @@
   function makeParticles() {
     particles = [];
     if (REDUCE_MOTION) return;
+    const pmul = (RARITY_FX[currentRarity] || { particles: 1 }).particles; // density grades by rarity
+    if (pmul <= 0) return;                                  // 普通 → no particles (plainest)
     const area = cw * ch;
-    const bokehN = Math.round(Math.min(10, area / 80000)); // soft gold out-of-focus orbs (depth)
-    const dustN  = Math.round(Math.min(64, area / 13000)); // floating gold dust
-    const glitN  = Math.round(Math.min(34, area / 24000)); // glittering sparkles
+    const bokehN = Math.round(Math.min(10, area / 80000) * pmul); // soft gold out-of-focus orbs (depth)
+    const dustN  = Math.round(Math.min(64, area / 13000) * pmul); // floating gold dust
+    const glitN  = Math.round(Math.min(34, area / 24000) * pmul); // glittering sparkles
     for (let i = 0; i < bokehN; i++) particles.push({ type: "bokeh", x: rnd()*cw, y: rnd()*ch, r: 30+rnd()*56, vy: -(0.03+rnd()*0.07), vx: (rnd()-.5)*0.05, ph: rnd()*6.28, sp: 0.004+rnd()*0.008, hue: 40+rnd()*9 });
     for (let i = 0; i < dustN; i++)  particles.push({ type: "dust",  x: rnd()*cw, y: rnd()*ch, r: 0.5+rnd()*1.5, vy: -(0.05+rnd()*0.28), vx: (rnd()-.5)*0.16, ph: rnd()*6.28, sp: 0.01+rnd()*0.03, hue: 42+rnd()*8 });
     for (let i = 0; i < glitN; i++)  particles.push({ type: "glit",  x: rnd()*cw, y: rnd()*ch, r: 0.8+rnd()*1.5, ph: rnd()*6.28, sp: 0.03+rnd()*0.06, hue: 44+rnd()*8, big: rnd()<0.3 });
@@ -430,11 +483,12 @@
     const autoX = Math.sin(f * .012) * .25, autoY = Math.cos(f * .009) * .2;
     par.cx += (par.tx + autoX - par.cx) * .06;
     par.cy += (par.ty + autoY - par.cy) * .06;
-    if (lbBackdrop) lbBackdrop.style.transform = "scale(1.3) translate3d(" + (par.cx * -4).toFixed(2) + "px," + (par.cy * -4).toFixed(2) + "px,0)"; // drifts opposite → depth
-    if (lbScene) lbScene.style.transform = "translate3d(" + (par.cx * 8).toFixed(2) + "px," + (par.cy * 8).toFixed(2) + "px,0)";
-    if (lbBg) lbBg.style.transform = "translate3d(" + (par.cx * 4).toFixed(2) + "px," + (par.cy * 4).toFixed(2) + "px,0)";
-    if (lbFg) lbFg.style.transform = "translate3d(" + (par.cx * 17).toFixed(2) + "px," + (par.cy * 17).toFixed(2) + "px,0)"; // foreground pops (2.5D)
-    lbCanvas.style.transform = "translate3d(" + (par.cx * 24).toFixed(2) + "px," + (par.cy * 24).toFixed(2) + "px,0)";
+    const D = lbDepth;                            // parallax depth grades by rarity
+    if (lbBackdrop) lbBackdrop.style.transform = "scale(1.3) translate3d(" + (par.cx * -4 * D).toFixed(2) + "px," + (par.cy * -4 * D).toFixed(2) + "px,0)"; // drifts opposite → depth
+    if (lbScene) lbScene.style.transform = "translate3d(" + (par.cx * 8 * D).toFixed(2) + "px," + (par.cy * 8 * D).toFixed(2) + "px,0)";
+    if (lbBg) lbBg.style.transform = "translate3d(" + (par.cx * 4 * D).toFixed(2) + "px," + (par.cy * 4 * D).toFixed(2) + "px,0)";
+    if (lbFg) lbFg.style.transform = "translate3d(" + (par.cx * 17 * D).toFixed(2) + "px," + (par.cy * 17 * D).toFixed(2) + "px,0)"; // foreground pops (2.5D)
+    lbCanvas.style.transform = "translate3d(" + (par.cx * 24 * D).toFixed(2) + "px," + (par.cy * 24 * D).toFixed(2) + "px,0)";
     if (ctx) {
       ctx.clearRect(0, 0, cw, ch);
       ctx.globalCompositeOperation = "lighter";
@@ -489,6 +543,8 @@
     lightbox.hidden = false; void lightbox.offsetWidth;
     lightbox.classList.add("is-open"); document.body.classList.add("no-scroll");
     if (appEl) { appEl.inert = true; appEl.setAttribute("aria-hidden", "true"); }
+    lightbox.dataset.rarity = currentRarity;               // CSS grades rays/holo/glows
+    lbDepth = (RARITY_FX[currentRarity] || { depth: 1 }).depth;
     sizeCanvas(); makeParticles();
     par.tx = par.ty = par.cx = par.cy = 0;
     if (!REDUCE_MOTION) {
@@ -535,7 +591,7 @@
     movePill();
   });
 
-  preload(IMAGES.cardZh); preload(IMAGES.cardEn);
+  RARITY_ORDER.forEach((k) => { preload(RARITY[k].zh); preload(RARITY[k].en); }); // all rarities, both langs
   updateHint(); setFill(); setScreen("card");
   window.addEventListener("resize", movePill);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(movePill);

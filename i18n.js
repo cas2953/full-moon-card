@@ -37,7 +37,7 @@
       "lightbox.caption": "輕觸並傾斜畫面，感受魔法",
     },
     en: {
-      "app.title": "Full-Moon Card",
+      "app.title": "Baby's First Month",
       "nav.card": "Bobo Asleep",
       "nav.draw": "Bobo's Card",
 

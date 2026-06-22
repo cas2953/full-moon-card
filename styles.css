@@ -390,7 +390,40 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
    SCREEN 2 — 紀念小卡
    ============================================================ */
 .screen--draw { align-items: center; justify-content: center; padding: 18px; }
-.draw-area { position: relative; width: 100%; display: flex; justify-content: center; }
+.draw-area {
+  position: relative; width: 100%; display: flex; justify-content: center;
+  /* rarity tokens (default = 傳說 gold); overridden per data-rarity below */
+  --burst-core: rgba(255,248,225,.95);
+  --burst-mid:  rgba(255,214,130,.6);
+  --burst-ray:  rgba(255,230,150,.6);
+  --burst-ring: rgba(255,232,160,.85);
+  --burst-scale: 1.25;
+  --rarity-glow: rgba(240,200,120,.5);
+}
+.draw-area[data-rarity="normal"] {   /* 普通 — plainest: a soft pale flash, no rays */
+  --burst-core: rgba(238,240,250,.5);
+  --burst-mid:  rgba(205,210,225,.2);
+  --burst-ray:  transparent;
+  --burst-ring: rgba(215,220,235,.4);
+  --burst-scale: .5;
+  --rarity-glow: rgba(200,206,226,.26);
+}
+.draw-area[data-rarity="rare"] {     /* 精良 — blue */
+  --burst-core: rgba(224,240,255,.9);
+  --burst-mid:  rgba(120,180,255,.5);
+  --burst-ray:  rgba(150,200,255,.42);
+  --burst-ring: rgba(170,210,255,.8);
+  --burst-scale: .85;
+  --rarity-glow: rgba(110,170,255,.5);
+}
+.draw-area[data-rarity="epic"] {     /* 史詩 — purple */
+  --burst-core: rgba(242,228,255,.92);
+  --burst-mid:  rgba(180,110,255,.55);
+  --burst-ray:  rgba(200,140,255,.52);
+  --burst-ring: rgba(210,160,255,.85);
+  --burst-scale: 1.05;
+  --rarity-glow: rgba(180,110,255,.55);
+}
 .deck[hidden], .drawn[hidden] { display: none; }
 
 /* slow dynamic light flow behind the keepsake */
@@ -409,17 +442,17 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
 .draw-aura::after { animation-duration: 78s; animation-direction: reverse; opacity: .6; }
 @keyframes auraSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
-/* legendary golden burst on reveal */
-.draw-burst { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 5; opacity: 0; }
+/* reveal burst — colour + scale driven by the rarity tokens above */
+.draw-burst { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 5; opacity: 0; transform: scale(var(--burst-scale, 1)); }
 .draw-area.is-bursting .draw-burst { opacity: 1; }
 .draw-burst > span { position: absolute; }
 .draw-burst__flash { width: 55%; aspect-ratio: 1; border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,248,225,.95) 0%, rgba(255,214,130,.6) 28%, rgba(255,190,80,0) 68%); }
+  background: radial-gradient(circle, var(--burst-core) 0%, var(--burst-mid) 28%, transparent 68%); }
 .draw-burst__rays { width: 150%; aspect-ratio: 1;
-  background: repeating-conic-gradient(from 0deg, rgba(255,230,150,.6) 0deg 1.4deg, transparent 1.4deg 9deg);
+  background: repeating-conic-gradient(from 0deg, var(--burst-ray) 0deg 1.4deg, transparent 1.4deg 9deg);
   -webkit-mask: radial-gradient(circle, transparent 16%, #000 30%, #000 48%, transparent 70%);
   mask: radial-gradient(circle, transparent 16%, #000 30%, #000 48%, transparent 70%); }
-.draw-burst__ring { width: 34%; aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(255,232,160,.85); }
+.draw-burst__ring { width: 34%; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--burst-ring); }
 .draw-area.is-bursting .draw-burst__flash { animation: bFlash 1s ease-out forwards; }
 .draw-area.is-bursting .draw-burst__rays { animation: bRays 1.1s cubic-bezier(.2,.7,.2,1) forwards; }
 .draw-area.is-bursting .draw-burst__ring { animation: bRing .9s ease-out forwards; }
@@ -460,8 +493,8 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
 .drawn { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; }
 .drawn__card {
   position: relative; width: min(72vw, 300px);
-  filter: drop-shadow(0 24px 34px rgba(0,0,0,.6)) drop-shadow(0 0 26px rgba(150,100,220,.4));
-  transition: transform .25s ease;
+  filter: drop-shadow(0 24px 34px rgba(0,0,0,.6)) drop-shadow(0 0 26px var(--rarity-glow, rgba(150,100,220,.4)));
+  transition: transform .25s ease, filter .4s ease;
 }
 .drawn__card img { width: 100%; height: auto; }
 .drawn__card:active { transform: scale(.98); }
@@ -609,6 +642,21 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
   50%  { transform: translate(3%, 4%)  scale(1.12); opacity: 1; }
   100% { transform: translate(-1%, 2%) scale(1.06); opacity: .9; }
 }
+
+/* close-up FX graded by drawn rarity — particle density handled in JS.
+   普通 plainest → 傳說 full. (legendary uses the defaults above) */
+.lightbox[data-rarity="normal"] .lightbox__rays,
+.lightbox[data-rarity="normal"] .lightbox__holo,
+.lightbox[data-rarity="normal"] .glow { display: none; }
+.lightbox[data-rarity="normal"] .lightbox__lumin { opacity: .5; }
+
+.lightbox[data-rarity="rare"] .lightbox__holo { display: none; }
+.lightbox[data-rarity="rare"] .lightbox__rays { opacity: .2; }
+.lightbox[data-rarity="rare"] .glow { opacity: .45; }
+
+.lightbox[data-rarity="epic"] .lightbox__rays { opacity: .34; }
+.lightbox[data-rarity="epic"] .lightbox__holo { opacity: .3; }
+.lightbox[data-rarity="epic"] .glow { opacity: .8; }
 
 /* ============================================================
    RESPONSIVE
