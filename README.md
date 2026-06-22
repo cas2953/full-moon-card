@@ -3,7 +3,7 @@
 純前端（HTML / CSS / JS，零相依套件、免建置）的互動式嬰兒滿月賀卡，採統一的 **「月夜 Moonlit」** 視覺主題，
 針對 **iPhone 17 Pro**（402×874pt、DPR 3、安全區）做 RWD 最佳化，支援 **中／英** 切換。
 
-🌙 **線上版本**：<https://cas2953.github.io/full-moon-card/>
+🌙 **線上版本**：<https://bobo-first-month.netlify.app>（部署於 Netlify）
 📱 **QR Code**：[qr-code.png](qr-code.png) ／ [qr-code.svg](qr-code.svg)（掃描即開啟線上版本）
 
 ---
@@ -59,18 +59,21 @@
 
 ## 🚀 部署 / 更新
 
-本專案已上線於 **GitHub Pages（branch `main` / root，免費 HTTPS）**：<https://cas2953.github.io/full-moon-card/>
+主站部署於 **Netlify**（連動此 GitHub repo、免費 HTTPS）：<https://bobo-first-month.netlify.app>
+設定見 [netlify.toml](netlify.toml)（純靜態、發佈根目錄、圖片長快取）。原 **GitHub Pages** 鏡像仍可用：<https://cas2953.github.io/full-moon-card/>
 
-要更新內容，只要 push 到 `main`，Pages 會自動重新發佈：
+要更新內容，只要 push 到 `main`，Netlify（與 GitHub Pages）會自動重新發佈：
 ```bash
 git add -A && git commit -m "update" && git push
 ```
+
+首次上線（Netlify）：app.netlify.com → Add new site → Import an existing project → 選此 repo → Build command 留空、Publish directory 填 `.` → Deploy；之後到 **Site configuration → Change site name** 改成想要的 `名字.netlify.app`（隱藏 GitHub 帳號）。
 
 > ⚠️ 陀螺儀（DeviceMotion）只有在 **HTTPS（或 localhost）** 才能運作，所以請用線上版（或下方本機 HTTPS）測試搖晃功能。
 
 ### 重新產生 QR Code（若日後換網址）
 ```bash
-python -c "import segno; segno.make('你的網址', error='h').save('qr-code.png', scale=12, border=4, dark='#171231')"
+python -c "import segno; segno.make('https://bobo-first-month.netlify.app', error='h').save('qr-code.png', scale=12, border=4, dark='#171231')"
 ```
 
 ### 本機預覽
