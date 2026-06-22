@@ -76,8 +76,8 @@ python -m http.server 8000   # 然後開 http://localhost:8000
 
 ## 🛠️ 開發小抄
 
-- 網址加 `?debug` 會顯示能量／心情讀數，方便調整搖晃靈敏度。
-- 搖晃參數在 [app.js](app.js) 最上方的 `SHAKE`：`NOISE_FLOOR`（調高＝更不敏感、過濾小晃動）、`SMILE_ON`（調高＝要搖更久才笑）、`CRY_ENTER`/`CRY_LEAVE`（哭的門檻）、`TAU`（衰減快慢，越大越慢）、`MOTION_K`（靈敏度）、`DWELL_MIN`/`DWELL_RAND`（每個心情至少停留 2.5–5 秒，含隨機）。
+- 網址加 `?debug` 會顯示「安撫值（lvl）／心情」即時讀數，方便調整搖晃手感。
+- 搖晃採單一「安撫值」（0–1）模型：晃動先餵給一個有阻尼的 `drive`，再緩緩推升安撫值；停手就慢慢回落。進度條＝安撫值＝心情，三者永遠一致。參數都在 [app.js](app.js) 最上方的 `SHAKE`：`NOISE_FLOOR`（調高＝更不敏感、過濾小晃動）、`DAMP`（調低＝阻尼更重、更需要持續搖）、`RISE`（調低＝要搖更久才上升）、`DRAIN`（停手回落速度）、`CRY_MAX`/`SMILE_MIN`（哭／笑的門檻）。切換到哭會下雨、切換到笑會冒星星。
 - 多語字串集中在 [i18n.js](i18n.js) 的 `DICT`。
 - 視覺主題色集中在 [styles.css](styles.css) `:root`（月夜底色 + 金色點綴 + 三種心情色）。
 - 尊重系統「減少動態效果」設定（`prefers-reduced-motion`）。

@@ -69,6 +69,8 @@
             <img class="photo-layer" data-state="cry"   alt="" decoding="async" />
             <div class="stage-frame" aria-hidden="true"></div>
             <div class="stage-sheen" aria-hidden="true"></div>
+            <div class="mood-fx mood-fx--rain" id="fx-rain" aria-hidden="true"></div>
+            <div class="mood-fx mood-fx--stars" id="fx-stars" aria-hidden="true"></div>
           </div>
         </div>
 
@@ -197,6 +199,7 @@
 
   <!-- ============ LIGHTBOX (full-screen close-up) ============ -->
   <div class="lightbox" id="lightbox" hidden aria-modal="true" role="dialog">
+    <img id="lightbox-backdrop" class="lightbox__backdrop" alt="" aria-hidden="true" decoding="async" />
     <canvas class="lightbox__fx" id="lightbox-fx" aria-hidden="true"></canvas>
     <div class="lightbox__scene" id="lightbox-scene">
       <div class="lightbox__frame" id="lightbox-frame">

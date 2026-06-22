@@ -232,6 +232,43 @@ body[data-mood="cry"]   .photo-layer[data-state="cry"] { opacity: 1; }
 }
 @keyframes sheen { 0%,100% { background-position: 130% 0; } 50% { background-position: -30% 0; } }
 
+/* mood-change transition FX — burst that plays for ~1.5s then fades */
+.mood-fx {
+  position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  border-radius: inherit; overflow: hidden; opacity: 0; transition: opacity .5s ease;
+}
+.mood-fx.is-on { opacity: 1; }
+
+/* rain — entering 哭 */
+.mood-fx--rain .drop {
+  position: absolute; top: -18%; width: 2px; border-radius: 2px;
+  background: linear-gradient(to bottom, rgba(170,200,245,0), rgba(196,219,252,.92));
+  transform: rotate(9deg);
+}
+.mood-fx--rain.is-on .drop {
+  animation-name: rainFall; animation-timing-function: cubic-bezier(.45,0,.75,1); animation-iteration-count: infinite;
+}
+@keyframes rainFall {
+  0% { top: -20%; opacity: 0; } 14% { opacity: .95; } 86% { opacity: .95; } 100% { top: 118%; opacity: 0; }
+}
+
+/* stars + starlight — entering 笑 */
+.mood-fx--stars .star {
+  position: absolute; transform: scale(0);
+  background: radial-gradient(circle at 50% 50%, #fff 0%, var(--gold) 46%, rgba(240,210,138,0) 74%);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  filter: drop-shadow(0 0 5px rgba(246,197,96,.9));
+}
+.mood-fx--stars.is-on .star {
+  animation-name: starTwinkle; animation-timing-function: ease-in-out; animation-iteration-count: infinite;
+}
+@keyframes starTwinkle {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  35% { transform: scale(1) rotate(24deg); opacity: 1; }
+  70% { transform: scale(.55) rotate(40deg); opacity: .65; }
+  100% { transform: scale(0) rotate(60deg); opacity: 0; }
+}
+
 /* ---- HUD ---- */
 .card-hud { display: flex; flex-direction: column; align-items: center; gap: 16px; width: 100%; max-width: 360px; }
 
@@ -285,6 +322,8 @@ body[data-mood="cry"]   .mood__node[data-mood-node="cry"] .mood__face .tear { op
   animation: bob 2.8s ease-in-out infinite;
 }
 .shake-hint__icon { color: var(--accent); display: inline-flex; animation: wiggle 1.5s ease-in-out infinite; transition: color .4s ease; }
+/* English copy is kept short & on one line so switching mode never adds a row */
+body[data-lang="en"] .shake-hint { font-size: 13px; letter-spacing: 0; white-space: nowrap; padding: 11px 18px; }
 @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @keyframes wiggle { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
 
@@ -491,9 +530,15 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
 }
 .lightbox.is-open { opacity: 1; }
 .lightbox[hidden] { display: none; }
-.lightbox__fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* the og scene itself, blown-up + softly blurred, extends behind the framed card */
+.lightbox__backdrop {
+  position: absolute; inset: 0; z-index: 0;
+  width: 100%; height: 100%; object-fit: cover; transform: scale(1.3);
+  filter: blur(46px) brightness(.5) saturate(1.25); opacity: .92; will-change: transform;
+}
+.lightbox__fx { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; }
 .lightbox__scene {
-  position: relative; width: 100%;
+  position: relative; z-index: 2; width: 100%;
   display: flex; align-items: center; justify-content: center;
   padding: max(20px, var(--safe-t)) 18px max(20px, var(--safe-b)); will-change: transform;
 }
@@ -508,7 +553,7 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
 /* 2.5D depth: blurred/darkened background + sharp foreground baby */
 .lb-bg { position: relative; display: block; will-change: transform; }
 .lb-bg img { display: block; max-width: 100%; max-height: 82vh; width: auto; height: auto;
-  transform: scale(1.05); filter: blur(0.6px) brightness(.95) saturate(1.05); } /* gentle — background stays admirable */
+  transform: scale(1.04); filter: blur(0.3px) brightness(.98) saturate(1.06); } /* near-sharp — fully admirable */
 .lb-fg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; will-change: transform; }
 
 /* volumetric god rays */
@@ -595,9 +640,11 @@ body.dl-on .btn-download { opacity: 1; transform: none; pointer-events: auto; }
   .card-back__rune, .card-back__shine, .drawn, .drawn.is-revealed, .drawn__zoom,
   .lightbox__frame, .glow, .lightbox__breath, .lightbox__lumin,
   .lightbox__rays, .lightbox__holo, .draw-aura,
+  .mood-fx, .mood-fx .drop, .mood-fx .star,
   .draw-burst__flash, .draw-burst__rays, .draw-burst__ring {
     animation: none !important;
   }
+  .mood-fx { opacity: 0 !important; }
   .draw-aura::before, .draw-aura::after { animation: none !important; }
   .photo-layer { transition: opacity .3s ease; }
   .btn-download { transform: none !important; }

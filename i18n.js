@@ -47,15 +47,15 @@
       "motion.denied": "Motion access denied — tap the photo to change the baby's mood",
       "motion.unsupported": "No motion sensor — tap the photo to change moods",
 
-      "card.hint": "Slowly shake your phone to make the baby smile",
-      "card.hintSmile": "The baby is smiling! Keep gently shaking",
-      "card.hintCry": "The baby is crying… shake a little to soothe",
+      "card.hint": "Gently shake to make Bobo smile",
+      "card.hintSmile": "Bobo's smiling — keep it gentle",
+      "card.hintCry": "Bobo's crying — shake to soothe",
       "card.download": "Save this card",
       "card.saved": "Saved ✓",
 
-      "mood.cry": "Crying",
+      "mood.cry": "Cry",
       "mood.calm": "Calm",
-      "mood.smile": "Smiling",
+      "mood.smile": "Smile",
 
       "draw.deckLabel": "Tap to open Bobo's keepsake card",
       "draw.opening": "Opening…",

@@ -21,22 +21,25 @@
   const DOWNLOAD_IMG  = { cry: "assets/images/baby-cry.png", calm: "assets/images/baby-card.png", smile: "assets/images/baby-smile.png" };
   const DOWNLOAD_NAME = { cry: "滿月賀卡-寶寶哭臉.png", calm: "滿月賀卡-寶寶熟睡.png", smile: "滿月賀卡-寶寶笑臉.png" };
 
-  // Shake → a single "soothe level" (0–1). Rocking raises it slowly; stopping
-  // drains it. The mood is read DIRECTLY from the level, so the progress bar
-  // (= level) and the active 哭/不哭/笑 node ALWAYS agree. Deliberately calm:
-  // jitter below NOISE_FLOOR is ignored and it takes ~2–3s of real rocking to
-  // fill. ── If still too sensitive: raise NOISE_FLOOR or lower RISE (via ?debug) ──
+  // Shake → a single "soothe level" (0–1). Rocking raises it; stopping drains it.
+  // The mood is read DIRECTLY from the level, so the progress bar (= level) and the
+  // active 哭/不哭/笑 node ALWAYS agree. Deliberately WEIGHTY: raw motion first feeds
+  // a damped "drive" (DAMP) that has to spin up before the level moves — so a single
+  // flick does almost nothing and it takes a few seconds of *sustained* rocking to
+  // fill, then it eases back down. ── Too sensitive? raise NOISE_FLOOR or lower
+  // RISE/DAMP. Too sluggish? lower NOISE_FLOOR or raise RISE. (use ?debug to watch) ──
   const SHAKE = {
-    NOISE_FLOOR: 2.2,   // accel delta below this (m/s²) is ignored (raise = less sensitive)
-    MOTION_CAP: 7,      // clamp big spikes so one jolt can't fill the bar
-    RISE: 0.0042,       // soothe gained per unit of above-floor motion
-    DRAIN: 0.18,        // soothe lost per second when not rocking
+    NOISE_FLOOR: 2.8,   // accel delta below this (m/s²) is ignored (raise = less sensitive)
+    MOTION_CAP: 6,      // clamp big spikes so one jolt can't fill the bar
+    DAMP: 0.10,         // how fast the drive eases toward the raw motion (lower = more damping/inertia)
+    RISE: 0.0028,       // soothe gained per unit of damped drive each frame
+    DRAIN: 0.16,        // soothe lost per second when not rocking
     CRY_MAX: 0.34,      // level below → 哭
     SMILE_MIN: 0.66,    // level above → 笑   (in between → 不哭)
     HYST: 0.04,         // small hysteresis so the boundary doesn't flicker
-    POINTER_K: 0.45,    // pointer move (px above 4) → motion (desktop fallback)
+    POINTER_K: 0.40,    // pointer move (px above 4) → motion (desktop fallback)
     START_LEVEL: 0.5,   // initial calm (sleeping) sits mid-bar
-    GRACE_MS: 250,
+    GRACE_MS: 280,
   };
 
   const REDUCE_MOTION = window.matchMedia &&
@@ -105,8 +108,51 @@
   setImg(layerSmile, IMAGES.babySmile);
   setImg(layerCry, IMAGES.babyCry);
 
+  /* ---- mood-change transition FX : rain on 哭, stars/starlight on 笑 ---- */
+  const fxRain = $("#fx-rain");
+  const fxStars = $("#fx-stars");
+  let fxTimer = 0;
+  function buildFx() {
+    if (fxRain) {
+      let r = "";
+      for (let i = 0; i < 16; i++) {
+        const left = (Math.random() * 100).toFixed(1);
+        const h = (12 + Math.random() * 12).toFixed(0);
+        const dur = (0.62 + Math.random() * 0.5).toFixed(2);
+        const del = (Math.random() * 0.55).toFixed(2);
+        r += '<span class="drop" style="left:' + left + '%;height:' + h + 'px;animation-duration:' + dur + 's;animation-delay:' + del + 's"></span>';
+      }
+      fxRain.innerHTML = r;
+    }
+    if (fxStars) {
+      let s = "";
+      for (let i = 0; i < 14; i++) {
+        const left = (Math.random() * 88 + 6).toFixed(1);
+        const top = (Math.random() * 80 + 8).toFixed(1);
+        const sz = (8 + Math.random() * 13).toFixed(0);
+        const dur = (1.0 + Math.random() * 0.7).toFixed(2);
+        const del = (Math.random() * 0.6).toFixed(2);
+        s += '<span class="star" style="left:' + left + '%;top:' + top + '%;width:' + sz + 'px;height:' + sz + 'px;animation-duration:' + dur + 's;animation-delay:' + del + 's"></span>';
+      }
+      fxStars.innerHTML = s;
+    }
+  }
+  function playMoodFx(mood) {
+    if (REDUCE_MOTION) return;
+    if (fxRain) fxRain.classList.remove("is-on");
+    if (fxStars) fxStars.classList.remove("is-on");
+    const el = mood === "cry" ? fxRain : mood === "smile" ? fxStars : null;
+    if (!el) return;
+    void el.offsetWidth;                         // restart the burst
+    el.classList.add("is-on");
+    window.clearTimeout(fxTimer);
+    fxTimer = window.setTimeout(() => el.classList.remove("is-on"), 1500);
+  }
+  buildFx();
+
   let level = SHAKE.START_LEVEL; // 0–1 soothe level (drives BOTH the bar and the mood)
   let motionAccum = 0;           // above-floor motion summed since the last frame
+  let drive = 0;                 // damped motion: eases toward motionAccum (gives weight/inertia)
   let state = "calm";            // 'cry' | 'calm' | 'smile'
   let hasInteracted = false;
   let lastFlipTs = 0;            // performance.now() the current mood was entered
@@ -128,6 +174,7 @@
     lastFlipTs = performance.now();
     document.body.setAttribute("data-mood", next);
     if (next === "smile") document.body.classList.add("dl-on"); // unlock download, then it stays
+    playMoodFx(next);                                           // rain (哭) / stars (笑) transition
     updateHint();
   }
   function setFill() {
@@ -159,16 +206,19 @@
     const t = typeof ts === "number" ? ts : lastTs;
     const dt = lastTs ? Math.min(80, t - lastTs) : 16;
     lastTs = t;
-    level += motionAccum * SHAKE.RISE;           // rise from rocking since last frame
+    // damped drive: motion has to build up before it pushes the level (inertia)
+    drive += (motionAccum - drive) * SHAKE.DAMP;
     motionAccum = 0;
+    level += drive * SHAKE.RISE;                 // rise scaled by the damped drive
     level -= SHAKE.DRAIN * (dt / 1000);          // drain over time
     level = Math.max(0, Math.min(1, level));
     setFill();
     evalMood();
 
     if (DEBUG) debugReadout();
-    if (level > 0 && hasInteracted) { cardRaf = requestAnimationFrame(tick); }
-    else { loopRunning = false; lastTs = 0; }
+    // keep ticking while there's still drive to bleed off or level to drain
+    if ((level > 0 || drive > 0.01) && hasInteracted) { cardRaf = requestAnimationFrame(tick); }
+    else { loopRunning = false; lastTs = 0; drive = 0; }
   }
   function ensureLoop() {
     if (!loopRunning) { loopRunning = true; lastTs = 0; cardRaf = requestAnimationFrame(tick); }
@@ -210,7 +260,7 @@
     hasInteracted = true;
     manualMood = true;                 // pin until next real shake
     if (cardRaf) cancelAnimationFrame(cardRaf);
-    loopRunning = false; lastTs = 0;   // freeze the decay loop so the tap sticks
+    loopRunning = false; lastTs = 0; drive = 0;   // freeze the decay loop so the tap sticks
     const next = TAP_NEXT[state] || "smile";
     level = TAP_LEVEL[next];
     setMood(next, true);
@@ -341,10 +391,12 @@
   const lbCanvas = $("#lightbox-fx");
   const lbBg = $("#lb-bg");
   const lbFg = $("#lightbox-fg");
+  const lbBackdrop = $("#lightbox-backdrop");
   const drawnCardBtn = $("#drawn-card");
   const appEl = $("#app");
   setImg(lbImg, IMAGES.cardOg);
   setImg(lbFg, IMAGES.cardOgFg);
+  setImg(lbBackdrop, IMAGES.cardOg);   // og scene, blown-up + blurred, extends behind the frame
 
   let lbOpen = false, lbRaf = 0, lbReturnFocus = null;
   const ctx = lbCanvas ? lbCanvas.getContext("2d") : null;
@@ -378,6 +430,7 @@
     const autoX = Math.sin(f * .012) * .25, autoY = Math.cos(f * .009) * .2;
     par.cx += (par.tx + autoX - par.cx) * .06;
     par.cy += (par.ty + autoY - par.cy) * .06;
+    if (lbBackdrop) lbBackdrop.style.transform = "scale(1.3) translate3d(" + (par.cx * -4).toFixed(2) + "px," + (par.cy * -4).toFixed(2) + "px,0)"; // drifts opposite → depth
     if (lbScene) lbScene.style.transform = "translate3d(" + (par.cx * 8).toFixed(2) + "px," + (par.cy * 8).toFixed(2) + "px,0)";
     if (lbBg) lbBg.style.transform = "translate3d(" + (par.cx * 4).toFixed(2) + "px," + (par.cy * 4).toFixed(2) + "px,0)";
     if (lbFg) lbFg.style.transform = "translate3d(" + (par.cx * 17).toFixed(2) + "px," + (par.cy * 17).toFixed(2) + "px,0)"; // foreground pops (2.5D)
