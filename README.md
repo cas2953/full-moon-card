@@ -94,6 +94,7 @@ python -m http.server 8000   # 然後開 http://localhost:8000
 - 網址加 `?debug` 會顯示「安撫值（lvl）／心情」即時讀數，方便調整搖晃手感。
 - 搖晃採單一「安撫值」（0–1）模型：晃動先餵給有阻尼的 `drive` 再推升安撫值；停手先 hold 再緩緩衰減。進度條＝安撫值＝心情，三者永遠一致。參數都在 [app.js](app.js) 最上方的 `SHAKE`：`NOISE_FLOOR`（調高＝更不敏感）、`ROT_K`（扭轉手機的權重）、`DAMP`（調低＝阻尼更重）、`RISE`（調低＝要搖更久）、`DRAIN`（衰減速度，調低＝每階段停更久）、`HOLD_MS`（停手後維持多久才衰減）、`CRY_MAX`/`SMILE_MIN`（哭／笑門檻）。全軸度（x/y/z + rotationRate）皆會觸發；切到哭下雨、切到笑冒星星。
 - 紀念小卡稀有度設定在 [app.js](app.js) 的 `RARITY`（各自機率 `p`、中英圖、下載圖）與 `RARITY_FX`（特寫粒子密度／視差深度）；翻卡 burst 與卡片光暈的分級色彩在 [styles.css](styles.css) 的 `.draw-area[data-rarity=...]`，特寫光層分級在 `.lightbox[data-rarity=...]`。
+- **換圖後一定要在 [app.js](app.js) 把 `ASSET_V` 加 1**：圖片是 1 年 immutable 快取、檔名不變，bump 後會在網址加 `?v=…`,瀏覽器才會抓到新圖(否則舊訪客會看到舊卡)。
 - 多語字串集中在 [i18n.js](i18n.js) 的 `DICT`。
 - 視覺主題色集中在 [styles.css](styles.css) `:root`（月夜底色 + 金色點綴 + 三種心情色）。
 - 尊重系統「減少動態效果」設定（`prefers-reduced-motion`）。

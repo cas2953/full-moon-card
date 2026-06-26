@@ -80,6 +80,12 @@
   const $ = (s, r) => (r || document).querySelector(s);
 
   /* ---------- 1. resilient image loading ---------- */
+  // Images are served with a 1-year immutable cache (filenames are stable), so
+  // bump ASSET_V whenever you replace an image in assets/images/ — it appends
+  // ?v=… so browsers/CDN fetch the new file instead of a stale cached copy.
+  const ASSET_V = "2";
+  const withV = (u) => (/^data:/.test(u) ? u : u + (u.indexOf("?") < 0 ? "?" : "&") + "v=" + ASSET_V);
+
   const PLACEHOLDER =
     "data:image/svg+xml;charset=utf-8," +
     encodeURIComponent(
@@ -92,7 +98,7 @@
     let i = 0;
     const next = () => {
       if (i >= list.length) { el.onerror = null; el.src = PLACEHOLDER; return; }
-      el.src = list[i++];
+      el.src = withV(list[i++]);
     };
     el.onerror = next; next();
   }
@@ -336,7 +342,7 @@
   async function downloadFile(src, name, span) {
     const key = span ? span.getAttribute("data-i18n") : null;
     try {
-      const res = await fetch(src);
+      const res = await fetch(withV(src));
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
